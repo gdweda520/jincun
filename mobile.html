@@ -1049,9 +1049,12 @@ function renderProductTable() {
         </tr>`;
     }).join('');
 
-    // 控制列显隐
-    document.querySelectorAll('.col-purchase').forEach(el => el.style.display = showPurchasePrice ? '' : 'none');
+    // 控制列显隐 - 员工账户强制隐藏进货价
+    var actualShowPurchase = showPurchasePrice && currentRole !== 'staff';
+    document.querySelectorAll('.col-purchase').forEach(el => el.style.display = actualShowPurchase ? '' : 'none');
     document.querySelectorAll('.col-wholesale').forEach(el => el.style.display = showWholesalePrice ? '' : 'none');
+    var ppBtn = document.getElementById('purchasePriceBtn');
+    if (ppBtn) ppBtn.style.display = (currentRole === 'staff') ? 'none' : '';
 
     // 分页
     renderPagination(list.length);
