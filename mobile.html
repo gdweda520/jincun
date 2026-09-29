@@ -582,6 +582,14 @@
         </div>
     </div>
     <div style="margin-top:14px;">
+        <h4 style="font-size:14px; margin-bottom:8px;">🏭 厂家管理</h4>
+        <div style="display:flex; gap:8px; margin-bottom:10px;">
+            <input type="text" id="newSupplierInput" placeholder="输入新厂家名称" style="flex:1; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:14px;">
+            <button class="action-btn btn-green" style="padding:10px 16px; font-size:14px; white-space:nowrap;" onclick="addSupplier()">添加</button>
+        </div>
+        <div id="supplierListContainer" style="display:flex; flex-direction:column; gap:6px;"></div>
+    </div>
+    <div style="margin-top:14px;">
         <h4 style="font-size:14px; margin-bottom:8px;">🔐 密码管理</h4>
         <div style="display:flex; flex-direction:column; gap:8px;">
             <button class="action-btn btn-purple" style="width:100%; padding:12px; font-size:14px;" onclick="openPasswordModal('owner')">👑 修改老板密码</button>
@@ -774,6 +782,103 @@ function applyRolePermissions(role) {
     }
     if (typeof renderProductTable === 'function') renderProductTable();
     if (typeof renderCart === 'function') renderCart();
+}
+
+// ============================================
+// 厂家管理
+// ============================================
+function getSupplierList() {
+    try { return JSON.parse(localStorage.getItem('supplierList') || '[]'); } catch(e) { return []; }
+}
+
+function saveSupplierList(list) {
+    try { localStorage.setItem('supplierList', JSON.stringify(list)); } catch(e) {}
+}
+
+function updateSupplierDatalist() {
+    var list = getSupplierList();
+    var products = getProducts();
+    products.forEach(function(p){ if (p.supplier) list.push(p.supplier); });
+    list = Array.from(new Set(list)).sort();
+    var dl = document.getElementById('supplierList');
+    if (dl) dl.innerHTML = list.map(function(s){ return '<option value="' + escapeHtml(s) + '">'; }).join('');
+}
+
+function renderSupplierManagement() {
+    var container = document.getElementById('supplierListContainer');
+    if (!container) return;
+    var list = getSupplierList();
+    var products = getProducts();
+    var usedSuppliers = new Set(products.map(function(p){ return p.supplier || ''; }).filter(Boolean));
+
+    if (list.length === 0) {
+        container.innerHTML = '<div style="color:#999; font-size:13px; padding:8px;">暂无自定义厂家，添加商品时也可直接输入厂家名称</div>';
+        return;
+    }
+
+    container.innerHTML = list.map(function(s, i) {
+        var count = products.filter(function(p){ return p.supplier === s; }).length;
+        return '<div style="display:flex; justify-content:space-between; align-items:center; background:var(--card); border-radius:8px; padding:10px 12px;">' +
+            '<div>' +
+                '<div style="font-size:14px; font-weight:600;">' + escapeHtml(s) + '</div>' +
+                '<div style="font-size:11px; color:#999;">' + (count > 0 ? count + '个商品' : '未使用') + '</div>' +
+            '</div>' +
+            '<div style="display:flex; gap:6px;">' +
+                '<button class="action-btn btn-yellow btn-sm" onclick="editSupplierName(' + i + ')">改名</button>' +
+                '<button class="action-btn btn-red btn-sm" onclick="deleteSupplier(' + i + ')">删除</button>' +
+            '</div>' +
+        '</div>';
+    }).join('');
+}
+
+function addSupplier() {
+    var input = document.getElementById('newSupplierInput');
+    var name = input.value.trim();
+    if (!name) { showToast('请输入厂家名称', 'error'); return; }
+    var list = getSupplierList();
+    if (list.indexOf(name) > -1) { showToast('该厂家已存在', 'error'); return; }
+    list.push(name);
+    saveSupplierList(list);
+    input.value = '';
+    renderSupplierManagement();
+    updateSupplierDatalist();
+    showToast('厂家「' + name + '」已添加', 'success');
+}
+
+function editSupplierName(index) {
+    var list = getSupplierList();
+    var oldName = list[index];
+    customPrompt('修改厂家名称', oldName, function(newName) {
+        if (!newName || !newName.trim()) return;
+        newName = newName.trim();
+        if (newName === oldName) return;
+        if (list.indexOf(newName) > -1) { showToast('该厂家已存在', 'error'); return; }
+        list[index] = newName;
+        saveSupplierList(list);
+        var products = getProducts();
+        products.forEach(function(p) { if (p.supplier === oldName) p.supplier = newName; });
+        saveProducts(products);
+        renderSupplierManagement();
+        updateSupplierDatalist();
+        if (typeof renderProductTable === 'function') renderProductTable();
+        showToast('厂家已改名', 'success');
+    });
+}
+
+function deleteSupplier(index) {
+    var list = getSupplierList();
+    var name = list[index];
+    var products = getProducts();
+    var count = products.filter(function(p){ return p.supplier === name; }).length;
+    if (count > 0) {
+        showToast('该厂家有' + count + '个商品在使用，无法删除', 'error');
+        return;
+    }
+    list.splice(index, 1);
+    saveSupplierList(list);
+    renderSupplierManagement();
+    updateSupplierDatalist();
+    showToast('厂家已删除', 'success');
 }
 
 function switchAccount() {
@@ -1239,7 +1344,8 @@ function openAddProductModal() {
         </div>
         <div class="form-group">
             <label>厂家名称</label>
-            <input type="text" id="pSupplier" placeholder="输入厂家名称">
+            <input type="text" id="pSupplier" placeholder="输入或选择厂家名称" list="supplierList">
+            <datalist id="supplierList"></datalist>
         </div>
         <div class="form-row">
             <div class="form-group"><label>进货价</label><input type="number" id="pPurchasePrice" step="0.01" value="0"></div>
@@ -1256,6 +1362,12 @@ function openAddProductModal() {
         <button class="action-btn btn-blue" style="width:100%; padding:12px; font-size:14px;" onclick="saveProduct()">保存商品</button>
     `;
     document.getElementById('modal-product').classList.add('show');
+    updateSupplierDatalist();
+}
+
+function openProductModal() {
+    document.getElementById('modal-product').classList.add('show');
+    updateSupplierDatalist();
 }
 
 function saveProduct() {
@@ -1281,6 +1393,8 @@ function saveProduct() {
     saveData();
     closeModal('modal-product');
     renderProductTable();
+    updateSupplierDatalist();
+    renderSupplierManagement();
     showToast('商品添加成功', 'success');
 }
 
@@ -2044,6 +2158,11 @@ function init() {
     try {
         var savedRole = localStorage.getItem('_au_role');
         if (savedRole) applyRolePermissions(savedRole);
+    } catch(e) {}
+
+    try {
+        updateSupplierDatalist();
+        renderSupplierManagement();
     } catch(e) {}
 }
 
