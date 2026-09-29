@@ -1023,6 +1023,10 @@ function renderProductTable() {
     if (list.length === 0) {
         tbody.innerHTML = '<tr><td colspan="9" style="padding:20px; color:#999;">' + (searchTerm ? '未找到匹配商品' : '暂无商品数据，请从电脑端导入或点击「添加商品」') + '</td></tr>';
         document.getElementById('pagination').innerHTML = '';
+        var _actualShow = showPurchasePrice && currentRole !== 'staff';
+        document.querySelectorAll('.col-purchase').forEach(function(el){ el.style.display = _actualShow ? '' : 'none'; });
+        var _ppBtn = document.getElementById('purchasePriceBtn');
+        if (_ppBtn) _ppBtn.style.display = (currentRole === 'staff') ? 'none' : '';
         return;
     }
 
