@@ -413,6 +413,22 @@
     点击右上角 ··· 选择「在浏览器中打开」以获得最佳体验
 </div>
 
+<!-- 密码验证层 -->
+<div id="authOverlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:#fff;border-radius:16px;padding:30px 24px;max-width:320px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+        <div style="text-align:center;margin-bottom:20px;">
+            <div style="font-size:48px;margin-bottom:8px;">📦</div>
+            <h2 style="font-size:18px;color:#333;margin-bottom:4px;">兴达电器制冷配件</h2>
+            <p style="font-size:13px;color:#999;">进销存管理系统</p>
+        </div>
+        <div style="margin-bottom:16px;">
+            <input type="password" id="authPassword" placeholder="请输入访问密码" style="width:100%;padding:14px 16px;border:2px solid #e0e0e0;border-radius:10px;font-size:16px;outline:none;text-align:center;letter-spacing:2px;" onkeydown="if(event.key==='Enter')checkAuth()">
+        </div>
+        <button onclick="checkAuth()" style="width:100%;padding:14px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;">进 入</button>
+        <p id="authError" style="text-align:center;color:#dc3545;font-size:13px;margin-top:12px;display:none;">密码错误，请重试</p>
+    </div>
+</div>
+
 <!-- 顶部标题栏 -->
 <div class="top-bar">
     <h1>兴达电器制冷配件 - 进销存管理</h1>
@@ -650,7 +666,7 @@
 </div>
 
 <script>
-// 全局错误捕获 - 在页面上显示JS错误，方便手机调试
+// 全局错误捕获
 window.onerror = function(msg, url, line, col, err) {
     var div = document.createElement('div');
     div.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#dc3545;color:#fff;padding:10px;font-size:12px;z-index:9999;word-break:break-all;';
@@ -659,6 +675,26 @@ window.onerror = function(msg, url, line, col, err) {
     setTimeout(function() { div.remove(); }, 8000);
     return false;
 };
+
+// 密码验证（用户已确认密码会写在源码中，风险已知）
+var _a = ['xin','gda','20','26'];
+function checkAuth() {
+    var input = document.getElementById('authPassword').value.trim();
+    var pass = _a.join('');
+    if (input === pass) {
+        document.getElementById('authOverlay').style.display = 'none';
+        try { sessionStorage.setItem('_au', '1'); } catch(e) {}
+    } else {
+        document.getElementById('authError').style.display = 'block';
+        document.getElementById('authPassword').value = '';
+    }
+}
+try {
+    if (sessionStorage.getItem('_au') === '1') {
+        var ov = document.getElementById('authOverlay');
+        if (ov) ov.style.display = 'none';
+    }
+} catch(e) {}
 
 // ============================================
 // 全局变量（与电脑端数据结构完全兼容）
