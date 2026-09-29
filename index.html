@@ -421,8 +421,14 @@
             <h2 style="font-size:18px;color:#333;margin-bottom:4px;">兴达电器制冷配件</h2>
             <p style="font-size:13px;color:#999;">进销存管理系统</p>
         </div>
+        <div style="margin-bottom:12px;">
+            <select id="authRole" style="width:100%;padding:12px 16px;border:2px solid #e0e0e0;border-radius:10px;font-size:15px;outline:none;appearance:auto;">
+                <option value="owner">老板账户</option>
+                <option value="staff">员工账户</option>
+            </select>
+        </div>
         <div style="margin-bottom:16px;">
-            <input type="password" id="authPassword" placeholder="请输入访问密码" style="width:100%;padding:14px 16px;border:2px solid #e0e0e0;border-radius:10px;font-size:16px;outline:none;text-align:center;letter-spacing:2px;" onkeydown="if(event.key==='Enter')checkAuth()">
+            <input type="password" id="authPassword" placeholder="请输入密码" style="width:100%;padding:14px 16px;border:2px solid #e0e0e0;border-radius:10px;font-size:16px;outline:none;text-align:center;letter-spacing:2px;" onkeydown="if(event.key==='Enter')checkAuth()">
         </div>
         <button onclick="checkAuth()" style="width:100%;padding:14px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;">进 入</button>
         <p id="authError" style="text-align:center;color:#dc3545;font-size:13px;margin-top:12px;display:none;">密码错误，请重试</p>
@@ -676,25 +682,65 @@ window.onerror = function(msg, url, line, col, err) {
     return false;
 };
 
-// 密码验证 - 用localStorage记住设备，不用每次输密码
-var _a = ['xin','gda','20','26'];
-function checkAuth() {
+// 密码验证 - SHA-256哈希，源码不含明文密码
+var PASS_HASHES = {
+    owner: '6dbebaf7253b9a092bd97f73f45c38017e2ba8a04b60409ec69354dfcf540cf5',
+    staff: '12b50b044f8e27f4cb0353edfb97907417b172c851755ce461a242fd57099d4e'
+};
+var currentRole = 'owner';
+
+async function sha256(text) {
+    var buf = new TextEncoder().encode(text);
+    var hash = await crypto.subtle.digest('SHA-256', buf);
+    return Array.from(new Uint8Array(hash)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+}
+
+async function checkAuth() {
+    var role = document.getElementById('authRole').value;
     var input = document.getElementById('authPassword').value.trim();
-    var pass = _a.join('');
-    if (input === pass) {
+    if (!input) return;
+    var hash = await sha256(input);
+    if (hash === PASS_HASHES[role]) {
+        currentRole = role;
         document.getElementById('authOverlay').style.display = 'none';
-        try { localStorage.setItem('_au', '1'); } catch(e) {}
+        try { localStorage.setItem('_au_role', role); localStorage.setItem('_au_hash', hash); } catch(e) {}
+        applyRolePermissions(role);
     } else {
         document.getElementById('authError').style.display = 'block';
         document.getElementById('authPassword').value = '';
     }
 }
-try {
-    if (localStorage.getItem('_au') === '1') {
-        var ov = document.getElementById('authOverlay');
-        if (ov) ov.style.display = 'none';
+
+function applyRolePermissions(role) {
+    if (role === 'staff') {
+        showPurchasePrice = false;
+        document.querySelectorAll('[data-tab="profit"]').forEach(function(el){ el.style.display = 'none'; });
+        document.querySelectorAll('[data-tab="data"]').forEach(function(el){ el.style.display = 'none'; });
+        document.querySelectorAll('.nav-tab').forEach(function(el){
+            if (el.textContent.indexOf('利润') > -1 || el.textContent.indexOf('数据') > -1) el.style.display = 'none';
+        });
+    } else {
+        document.querySelectorAll('[data-tab="profit"]').forEach(function(el){ el.style.display = ''; });
+        document.querySelectorAll('[data-tab="data"]').forEach(function(el){ el.style.display = ''; });
+        document.querySelectorAll('.nav-tab').forEach(function(el){
+            if (el.textContent.indexOf('利润') > -1 || el.textContent.indexOf('数据') > -1) el.style.display = '';
+        });
     }
-} catch(e) {}
+    if (typeof renderTable === 'function') renderTable();
+}
+
+(function() {
+    try {
+        var savedRole = localStorage.getItem('_au_role');
+        var savedHash = localStorage.getItem('_au_hash');
+        if (savedRole && savedHash && PASS_HASHES[savedRole] === savedHash) {
+            currentRole = savedRole;
+            var ov = document.getElementById('authOverlay');
+            if (ov) ov.style.display = 'none';
+            applyRolePermissions(savedRole);
+        }
+    } catch(e) {}
+})();
 
 // ============================================
 // 全局变量（与电脑端数据结构完全兼容）
