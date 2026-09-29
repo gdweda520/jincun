@@ -1,0 +1,1860 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="进销存">
+    <meta name="theme-color" content="#667eea">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='32' fill='%23667eea'/%3E%3Ctext x='96' y='130' font-size='100' text-anchor='middle' fill='white' font-family='sans-serif'%3E%F0%9F%93%A6%3C/text%3E%3C/svg%3E">
+    <title>兴达电器制冷配件 - 进销存管理(移动版)</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
+        button, .nav-item, .nav-tab, .action-btn, .tab-btn, .chip, .fab, .close-btn { cursor: pointer; touch-action: manipulation; }
+        :root {
+            --primary: #667eea;
+            --primary-dark: #5568d3;
+            --secondary: #764ba2;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --warning-dark: #e0a800;
+            --info: #17a2b8;
+            --light: #f8f9fa;
+            --dark: #343a40;
+            --border: #dee2e6;
+            --text: #212529;
+            --text-light: #6c757d;
+            --bg: #f0f2f5;
+            --card: #fff;
+            --gold-start: #ffd700;
+            --gold-end: #ffed4e;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 14px;
+            line-height: 1.5;
+            padding-bottom: 56px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* 顶部标题栏 - 与电脑端一致 */
+        .top-bar {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: #fff;
+            padding: 10px 16px;
+            position: sticky;
+            top: 0;
+            z-index: 200;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .top-bar h1 {
+            font-size: 18px;
+            font-weight: 700;
+            text-align: center;
+        }
+        .top-bar .date {
+            font-size: 11px;
+            text-align: center;
+            opacity: 0.85;
+            margin-top: 2px;
+        }
+
+        /* Tab导航栏 - 与电脑端一致 */
+        .nav-tabs {
+            display: flex;
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            position: sticky;
+            top: 52px;
+            z-index: 199;
+        }
+        .nav-tabs::-webkit-scrollbar { display: none; }
+        .nav-tab {
+            flex-shrink: 0;
+            padding: 10px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-light);
+            cursor: pointer;
+            border: none;
+            border-bottom: 3px solid transparent;
+            background: transparent;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .nav-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        /* 页面 */
+        .page { display: none; padding: 10px; }
+        .page.active { display: block; }
+
+        /* 搜索栏 - 与电脑端一致 */
+        .search-row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        .search-row input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+        }
+        .search-row input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+        }
+        .search-row .btn-icon {
+            width: 38px;
+            height: 38px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--card);
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 操作按钮行 */
+        .action-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        .action-btn {
+            padding: 7px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .btn-blue { background: #007bff; color: #fff; }
+        .btn-green { background: var(--success); color: #fff; }
+        .btn-red { background: var(--danger); color: #fff; }
+        .btn-yellow { background: var(--warning); color: #212529; }
+        .btn-gray { background: var(--text-light); color: #fff; }
+        .btn-orange { background: #fd7e14; color: #fff; }
+        .btn-purple { background: var(--primary); color: #fff; }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+        .btn-sm { padding: 4px 8px; font-size: 11px; }
+
+        /* 统计卡片 - 金色风格与电脑端一致 */
+        .stat-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, var(--gold-start), var(--gold-end));
+            border-radius: 8px;
+            padding: 10px 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        }
+        .stat-card .label { font-size: 11px; color: #856404; font-weight: 600; }
+        .stat-card .value { font-size: 18px; font-weight: 700; color: #212529; margin-top: 2px; }
+        .stat-card.blue { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .stat-card.blue .label, .stat-card.blue .value { color: #fff; }
+        .stat-card.green { background: linear-gradient(135deg, #28a745, #20c997); }
+        .stat-card.green .label, .stat-card.green .value { color: #fff; }
+        .stat-card.red { background: linear-gradient(135deg, #dc3545, #c82333); }
+        .stat-card.red .label, .stat-card.red .value { color: #fff; }
+
+        /* 商品表格 - 模拟电脑端表格 */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+        .data-table thead {
+            background: var(--light);
+        }
+        .data-table th {
+            padding: 8px 6px;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text);
+            border: 1px solid var(--border);
+            text-align: center;
+            white-space: nowrap;
+        }
+        .data-table td {
+            padding: 8px 6px;
+            font-size: 12px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+        .data-table td.name { text-align: left; font-weight: 600; }
+        .data-table td.price { color: var(--primary); font-weight: 600; }
+        .data-table .low-stock { color: var(--danger); font-weight: 700; }
+        .data-table tr:nth-child(even) { background: #fafbfc; }
+
+        /* 厂家筛选 */
+        .filter-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+        .chip {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            background: #e9ecef;
+            color: var(--text-light);
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .chip.active { background: var(--primary); color: #fff; }
+
+        /* 模态框 */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 300;
+            display: none;
+            justify-content: center;
+            align-items: flex-end;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-sheet {
+            background: var(--card);
+            width: 100%;
+            max-height: 90vh;
+            border-radius: 16px 16px 0 0;
+            overflow-y: auto;
+            animation: slideUp 0.25s ease;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: var(--card);
+            z-index: 1;
+            border-radius: 16px 16px 0 0;
+        }
+        .modal-header h3 { font-size: 16px; font-weight: 700; }
+        .modal-header .close-btn {
+            width: 30px; height: 30px;
+            border: none;
+            background: #e9ecef;
+            border-radius: 50%;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .modal-body { padding: 16px; }
+
+        /* 表单 */
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--text-light); margin-bottom: 4px; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+        }
+        .form-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
+        .form-row { display: flex; gap: 8px; }
+        .form-row .form-group { flex: 1; }
+
+        /* 购物车项 */
+        .cart-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            gap: 6px;
+        }
+        .cart-item .ci-info { flex: 1; min-width: 0; }
+        .cart-item .ci-name { font-size: 14px; font-weight: 600; }
+        .cart-item .ci-meta { font-size: 12px; color: var(--text-light); }
+        .cart-item .ci-qty { display: flex; align-items: center; gap: 4px; }
+        .cart-item .ci-qty button { width: 26px; height: 26px; border: none; border-radius: 4px; background: #e9ecef; font-size: 16px; cursor: pointer; }
+        .cart-item .ci-qty span { font-size: 14px; font-weight: 600; min-width: 20px; text-align: center; }
+
+        /* 记录卡片 */
+        .record-card {
+            background: var(--card);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 6px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        }
+        .record-card .r-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .record-card .r-badge { font-size: 11px; padding: 2px 6px; border-radius: 8px; font-weight: 600; }
+        .r-badge.wholesale { background: #e3f2fd; color: #1976d2; }
+        .r-badge.retail { background: #e8f5e9; color: #2e7d32; }
+        .r-badge.purchase { background: #fff3e0; color: #e65100; }
+        .record-card .r-date { font-size: 11px; color: var(--text-light); }
+        .record-card .r-body { font-size: 13px; }
+        .record-card .r-bottom { display: flex; justify-content: space-between; margin-top: 4px; font-size: 13px; }
+        .record-card .r-amount { font-weight: 700; color: var(--primary); }
+        .record-card .r-profit { font-weight: 600; color: var(--success); }
+
+        /* 空状态 */
+        .empty { text-align: center; padding: 30px 20px; color: #999; }
+        .empty .icon { font-size: 40px; margin-bottom: 6px; }
+
+        /* Toast */
+        .toast {
+            position: fixed; top: 120px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); color: #fff;
+            padding: 8px 16px; border-radius: 20px; font-size: 13px;
+            z-index: 400; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap;
+        }
+        .toast.show { opacity: 1; }
+
+        /* 浮动按钮 */
+        .fab {
+            position: fixed;
+            bottom: 60px; right: 14px;
+            width: 48px; height: 48px;
+            border-radius: 50%;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+            z-index: 150;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .fab-cart { background: var(--primary); color: #fff; }
+        .fab .badge {
+            position: absolute; top: -4px; right: -4px;
+            background: var(--danger); color: #fff;
+            font-size: 10px; min-width: 18px; height: 18px;
+            border-radius: 9px; display: flex; align-items: center; justify-content: center;
+            padding: 0 4px; font-weight: 700;
+        }
+
+        /* 底部Tab */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: var(--card);
+            border-top: 1px solid var(--border);
+            display: flex;
+            z-index: 200;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        .bottom-nav .nav-item {
+            flex: 1;
+            text-align: center;
+            padding: 7px 0 5px;
+            cursor: pointer;
+        }
+        .bottom-nav .nav-item.active { color: var(--primary); }
+        .bottom-nav .nav-item .icon { font-size: 18px; display: block; line-height: 1.2; }
+        .bottom-nav .nav-item .label { font-size: 10px; }
+
+        /* 提示框 */
+        .info-box {
+            background: #e7f3ff;
+            border: 1px solid #b3d7ff;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 12px;
+            color: #0066cc;
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+
+        /* 表格容器横向滚动 */
+        .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+        /* 分页 */
+        .pagination {
+            display: flex; justify-content: center; align-items: center; gap: 6px;
+            margin-top: 10px;
+        }
+        .pagination button {
+            padding: 5px 10px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--card);
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .pagination button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .pagination button:disabled { opacity: 0.4; }
+    </style>
+</head>
+<body>
+
+<!-- 微信提示 -->
+<div id="wechatTip" style="display:none; background:#fff3cd; border-bottom:1px solid #ffeaa7; padding:8px 16px; font-size:12px; color:#856404; text-align:center;">
+    点击右上角 ··· 选择「在浏览器中打开」以获得最佳体验
+</div>
+
+<!-- 顶部标题栏 -->
+<div class="top-bar">
+    <h1>兴达电器制冷配件 - 进销存管理</h1>
+    <div class="date" id="topDate"></div>
+    <div id="versionTag" style="font-size:10px; opacity:0.6; margin-top:2px;">v2.5 自动清缓存</div>
+</div>
+
+<!-- Tab导航栏 -->
+<div class="nav-tabs" id="navTabs">
+    <button class="nav-tab active" onclick="switchTab('inventory', this)">📦 库存管理</button>
+    <button class="nav-tab" onclick="switchTab('purchase', this)">🚚 采购管理</button>
+    <button class="nav-tab" onclick="switchTab('profit', this)">💰 利润统计</button>
+    <button class="nav-tab" onclick="switchTab('ranking', this)">🏆 销量排行</button>
+    <button class="nav-tab" onclick="switchTab('debt', this)">📒 欠款本</button>
+    <button class="nav-tab" onclick="switchTab('data', this)">⚙️ 数据管理</button>
+</div>
+
+<!-- ===== 库存管理 ===== -->
+<div class="page active" id="page-inventory">
+    <div class="search-row">
+        <input type="text" id="searchBox" placeholder="搜索商品名称/编码/分类/厂家..." oninput="searchProducts()" style="font-size:14px;">
+        <button class="btn-icon" onclick="togglePurchasePrice()" title="显示/隐藏进货价" id="purchasePriceBtn">👁️</button>
+        <button class="btn-icon" onclick="toggleWholesalePrice()" title="显示/隐藏批发价" id="wholesalePriceBtn">💲</button>
+    </div>
+    <div class="filter-chips" id="supplierFilters"></div>
+    <div class="action-row">
+        <button class="action-btn btn-green" onclick="openAddProductModal()">➕ 添加商品</button>
+        <button class="action-btn btn-blue" onclick="openCart('wholesale')">🛒 批发车 <span id="wholesaleBadge" style="background:#fff;color:#007bff;border-radius:8px;padding:0 4px;font-size:10px;margin-left:2px;">0</span></button>
+        <button class="action-btn btn-green" onclick="openCart('retail')">🛍️ 零售车 <span id="retailBadge" style="background:#fff;color:#28a745;border-radius:8px;padding:0 4px;font-size:10px;margin-left:2px;">0</span></button>
+    </div>
+    <div class="table-wrap">
+        <table class="data-table" id="productTable">
+            <thead>
+                <tr>
+                    <th>编号</th>
+                    <th>商品名称</th>
+                    <th>分类</th>
+                    <th>厂家</th>
+                    <th>库存</th>
+                    <th class="col-purchase">进货价</th>
+                    <th class="col-wholesale">批发价</th>
+                    <th>零售价</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="productTableBody"></tbody>
+        </table>
+    </div>
+    <div class="pagination" id="pagination"></div>
+</div>
+
+<!-- ===== 采购管理 ===== -->
+<div class="page" id="page-purchase">
+    <div class="search-row">
+        <input type="text" id="purchaseSearchBox" placeholder="搜索进货记录..." oninput="searchPurchaseOrders()" style="font-size:14px;">
+    </div>
+    <div class="action-row">
+        <button class="action-btn btn-orange" onclick="openPurchaseModal()">📝 创建采购单</button>
+    </div>
+    <div id="purchaseList"></div>
+</div>
+
+<!-- ===== 利润统计 ===== -->
+<div class="page" id="page-profit">
+    <div class="stat-cards">
+        <div class="stat-card blue">
+            <div class="label">本月销售额</div>
+            <div class="value" id="monthRevenue">¥0</div>
+        </div>
+        <div class="stat-card green">
+            <div class="label">本月利润</div>
+            <div class="value" id="monthProfit">¥0</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">今日销售额</div>
+            <div class="value" id="todayRevenue">¥0</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">今日利润</div>
+            <div class="value" id="todayProfitVal">¥0</div>
+        </div>
+    </div>
+    <h3 style="font-size:14px; margin:10px 0 8px;">📊 销售明细</h3>
+    <div id="profitList"></div>
+</div>
+
+<!-- ===== 销量排行 ===== -->
+<div class="page" id="page-ranking">
+    <div class="action-row">
+        <button class="action-btn btn-purple" onclick="renderRanking('month', this)">本月</button>
+        <button class="action-btn btn-outline" onclick="renderRanking('year', this)">本年</button>
+        <button class="action-btn btn-outline" onclick="renderRanking('all', this)">全部</button>
+    </div>
+    <div id="rankingList"></div>
+</div>
+
+<!-- ===== 欠款本 ===== -->
+<div class="page" id="page-debt">
+    <div class="search-row">
+        <input type="text" id="debtSearchBox" placeholder="搜索客户/商品..." oninput="searchDebtRecords()" style="font-size:14px;">
+    </div>
+    <div class="action-row">
+        <button class="action-btn btn-red" onclick="openAddDebtModal()">📝 添加欠款</button>
+    </div>
+    <div id="debtList"></div>
+</div>
+
+<!-- ===== 数据管理 ===== -->
+<div class="page" id="page-data">
+    <div class="info-box">
+        💡 <b>使用说明：</b><br>
+        1. 点击「导出数据」生成JSON文件，可通过微信发送到电脑<br>
+        2. 在电脑端进销存系统中导入该文件即可同步<br>
+        3. 从电脑端导出的数据，可通过「导入数据」加载到手机
+    </div>
+    <div class="stat-cards">
+        <div class="stat-card blue"><div class="label">商品数量</div><div class="value" id="dataProductCount">0</div></div>
+        <div class="stat-card green"><div class="label">销售记录</div><div class="value" id="dataSalesCount">0</div></div>
+        <div class="stat-card"><div class="label">进货记录</div><div class="value" id="dataPurchaseCount">0</div></div>
+        <div class="stat-card red"><div class="label">欠款记录</div><div class="value" id="dataDebtCount">0</div></div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="action-btn btn-blue" style="width:100%; padding:12px; font-size:14px;" onclick="exportData()">📤 导出数据（发送到电脑）</button>
+        <button class="action-btn btn-green" style="width:100%; padding:12px; font-size:14px;" onclick="document.getElementById('importFile').click()">📥 导入数据（从电脑同步）</button>
+        <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+    </div>
+    <div style="margin-top:14px;">
+        <h4 style="font-size:14px; margin-bottom:8px;">📱 一键保存到桌面</h4>
+        <button class="action-btn btn-purple" style="width:100%; padding:14px; font-size:15px; font-weight:700;" onclick="saveToDesktop()">📲 一键保存桌面图标</button>
+        <div id="desktopTip" style="display:none; background:#e7f3ff; border:1px solid #b3d7ff; border-radius:8px; padding:10px; margin-top:8px; font-size:12px; color:#0066cc; line-height:1.8;">
+        </div>
+    </div>
+    <div style="margin-top:14px;">
+        <h4 style="font-size:14px; margin-bottom:8px;">📦 手动添加到主屏幕</h4>
+        <div style="background:var(--card); border-radius:8px; padding:12px; font-size:12px; color:var(--text-light); line-height:1.8;">
+            如果上方按钮不生效，可手动操作：点击浏览器底部「分享」按钮 → 选择「添加到主屏幕」，即可像APP一样使用，离线也可访问。
+        </div>
+    </div>
+</div>
+
+<!-- 浮动购物车按钮 -->
+<button class="fab fab-cart" onclick="openCart(wholesaleCart.length > 0 ? 'wholesale' : 'retail')" id="cartFab" style="display:none;">
+    🛒<span class="badge" id="fabBadge">0</span>
+</button>
+
+<!-- ===== 模态框：添加/编辑商品 ===== -->
+<div class="modal-overlay" id="modal-product">
+    <div class="modal-sheet">
+        <div class="modal-header">
+            <h3 id="productModalTitle">添加商品</h3>
+            <button class="close-btn" onclick="closeModal('modal-product')">&times;</button>
+        </div>
+        <div class="modal-body" id="productModalBody"></div>
+    </div>
+</div>
+
+<!-- ===== 模态框：购物车 ===== -->
+<div class="modal-overlay" id="modal-cart">
+    <div class="modal-sheet">
+        <div class="modal-header">
+            <h3 id="cartModalTitle">🛒 购物车</h3>
+            <button class="close-btn" onclick="closeModal('modal-cart')">&times;</button>
+        </div>
+        <div class="modal-body" id="cartModalBody"></div>
+    </div>
+</div>
+
+<!-- ===== 模态框：结算 ===== -->
+<div class="modal-overlay" id="modal-checkout">
+    <div class="modal-sheet">
+        <div class="modal-header">
+            <h3>结算</h3>
+            <button class="close-btn" onclick="closeModal('modal-checkout')">&times;</button>
+        </div>
+        <div class="modal-body" id="checkoutBody"></div>
+    </div>
+</div>
+
+<!-- ===== 模态框：库存调整 ===== -->
+<div class="modal-overlay" id="modal-stock">
+    <div class="modal-sheet">
+        <div class="modal-header">
+            <h3>库存调整</h3>
+            <button class="close-btn" onclick="closeModal('modal-stock')">&times;</button>
+        </div>
+        <div class="modal-body" id="stockBody"></div>
+    </div>
+</div>
+
+<!-- ===== 模态框：采购单 ===== -->
+<div class="modal-overlay" id="modal-purchase">
+    <div class="modal-sheet">
+        <div class="modal-header">
+            <h3>创建采购单</h3>
+            <button class="close-btn" onclick="closeModal('modal-purchase')">&times;</button>
+        </div>
+        <div class="modal-body" id="purchaseModalBody"></div>
+    </div>
+</div>
+
+<!-- ===== 模态框：添加欠款 ===== -->
+<div class="modal-overlay" id="modal-debt">
+    <div class="modal-sheet">
+        <div class="modal-header">
+            <h3>添加欠款</h3>
+            <button class="close-btn" onclick="closeModal('modal-debt')">&times;</button>
+        </div>
+        <div class="modal-body" id="debtModalBody"></div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- 底部导航 -->
+<div class="bottom-nav">
+    <div class="nav-item active" data-tab="inventory" ontouchstart="" onclick="navClick('inventory', 0)">
+        <span class="icon">📦</span><span class="label">库存</span>
+    </div>
+    <div class="nav-item" data-tab="purchase" ontouchstart="" onclick="navClick('purchase', 1)">
+        <span class="icon">🚚</span><span class="label">采购</span>
+    </div>
+    <div class="nav-item" data-tab="profit" ontouchstart="" onclick="navClick('profit', 2)">
+        <span class="icon">💰</span><span class="label">利润</span>
+    </div>
+    <div class="nav-item" data-tab="ranking" ontouchstart="" onclick="navClick('ranking', 3)">
+        <span class="icon">🏆</span><span class="label">排行</span>
+    </div>
+    <div class="nav-item" data-tab="debt" ontouchstart="" onclick="navClick('debt', 4)">
+        <span class="icon">📒</span><span class="label">欠款</span>
+    </div>
+    <div class="nav-item" data-tab="data" ontouchstart="" onclick="navClick('data', 5)">
+        <span class="icon">⚙️</span><span class="label">数据</span>
+    </div>
+</div>
+
+<script>
+// 全局错误捕获 - 在页面上显示JS错误，方便手机调试
+window.onerror = function(msg, url, line, col, err) {
+    var div = document.createElement('div');
+    div.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#dc3545;color:#fff;padding:10px;font-size:12px;z-index:9999;word-break:break-all;';
+    div.textContent = 'JS错误: ' + msg + ' (行:' + line + ')';
+    document.body.appendChild(div);
+    setTimeout(function() { div.remove(); }, 8000);
+    return false;
+};
+
+// ============================================
+// 全局变量（与电脑端数据结构完全兼容）
+// ============================================
+let products = [];
+let salesRecords = [];
+let purchaseOrders = [];
+let priceHistory = [];
+let wholesaleCart = [];
+let retailCart = [];
+let debtRecords = [];
+
+let currentTab = 'inventory';
+let currentCartType = 'wholesale';
+let currentSupplierFilter = null;
+let showPurchasePrice = true;
+let showWholesalePrice = true;
+let searchDebounce = null;
+let currentPage = 1;
+let pageSize = 20;
+let totalPages = 1;
+let currentRankingType = 'month';
+let searchTerm = '';
+let purchaseSearchTerm = '';
+let debtSearchTerm = '';
+
+// localStorage key（与电脑端一致）
+const KEYS = {
+    products: 'products_noimg',
+    sales: 'salesRecords_noimg',
+    purchases: 'purchaseOrders_noimg',
+    priceHistory: 'priceHistory_noimg',
+    wholesaleCart: 'wholesaleCart_noimg',
+    retailCart: 'retailCart_noimg',
+    debts: 'debtRecords_noimg'
+};
+
+// ============================================
+// 数据存储（兼容微信内置浏览器，localStorage不可用时用内存）
+// ============================================
+var memStorage = {};
+var storageAvailable = true;
+try { localStorage.setItem('__test__', '1'); localStorage.removeItem('__test__'); } catch(e) { storageAvailable = false; }
+
+function saveData() {
+    if (!storageAvailable) {
+        memStorage.products = JSON.stringify(products);
+        memStorage.sales = JSON.stringify(salesRecords);
+        memStorage.purchases = JSON.stringify(purchaseOrders);
+        memStorage.priceHistory = JSON.stringify(priceHistory);
+        memStorage.wholesaleCart = JSON.stringify(wholesaleCart);
+        memStorage.retailCart = JSON.stringify(retailCart);
+        memStorage.debts = JSON.stringify(debtRecords);
+        return;
+    }
+    try {
+        localStorage.setItem(KEYS.products, JSON.stringify(products));
+        localStorage.setItem(KEYS.sales, JSON.stringify(salesRecords));
+        localStorage.setItem(KEYS.purchases, JSON.stringify(purchaseOrders));
+        localStorage.setItem(KEYS.priceHistory, JSON.stringify(priceHistory));
+        localStorage.setItem(KEYS.wholesaleCart, JSON.stringify(wholesaleCart));
+        localStorage.setItem(KEYS.retailCart, JSON.stringify(retailCart));
+        localStorage.setItem(KEYS.debts, JSON.stringify(debtRecords));
+    } catch(e) {
+        memStorage.products = JSON.stringify(products);
+        memStorage.sales = JSON.stringify(salesRecords);
+        memStorage.purchases = JSON.stringify(purchaseOrders);
+        memStorage.priceHistory = JSON.stringify(priceHistory);
+        memStorage.wholesaleCart = JSON.stringify(wholesaleCart);
+        memStorage.retailCart = JSON.stringify(retailCart);
+        memStorage.debts = JSON.stringify(debtRecords);
+    }
+}
+
+function loadData() {
+    if (!storageAvailable) {
+        products = JSON.parse(memStorage.products || '[]');
+        salesRecords = JSON.parse(memStorage.sales || '[]');
+        purchaseOrders = JSON.parse(memStorage.purchases || '[]');
+        priceHistory = JSON.parse(memStorage.priceHistory || '[]');
+        wholesaleCart = JSON.parse(memStorage.wholesaleCart || '[]');
+        retailCart = JSON.parse(memStorage.retailCart || '[]');
+        debtRecords = JSON.parse(memStorage.debts || '[]');
+        return;
+    }
+    try { products = JSON.parse(localStorage.getItem(KEYS.products)) || []; } catch(e) { products = []; }
+    try { salesRecords = JSON.parse(localStorage.getItem(KEYS.sales)) || []; } catch(e) { salesRecords = []; }
+    try { purchaseOrders = JSON.parse(localStorage.getItem(KEYS.purchases)) || []; } catch(e) { purchaseOrders = []; }
+    try { priceHistory = JSON.parse(localStorage.getItem(KEYS.priceHistory)) || []; } catch(e) { priceHistory = []; }
+    try { wholesaleCart = JSON.parse(localStorage.getItem(KEYS.wholesaleCart)) || []; } catch(e) { wholesaleCart = []; }
+    try { retailCart = JSON.parse(localStorage.getItem(KEYS.retailCart)) || []; } catch(e) { retailCart = []; }
+    try { debtRecords = JSON.parse(localStorage.getItem(KEYS.debts)) || []; } catch(e) { debtRecords = []; }
+}
+
+// ============================================
+// 工具函数
+// ============================================
+function showToast(msg, type) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.style.background = type === 'error' ? 'rgba(220,53,69,0.9)' : type === 'success' ? 'rgba(40,167,69,0.9)' : type === 'warning' ? 'rgba(255,193,7,0.9)' : 'rgba(0,0,0,0.8)';
+    toast.classList.add('show');
+    setTimeout(function() { toast.classList.remove('show'); }, 2000);
+}
+
+// 自定义确认对话框（替代confirm，微信中confirm被禁用）
+function customConfirm(message, callback) {
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;';
+    overlay.innerHTML = '<div style="background:#fff;border-radius:12px;padding:20px;max-width:300px;width:100%;box-shadow:0 4px 20px rgba(0,0,0,0.2);">' +
+        '<div style="font-size:15px;font-weight:600;margin-bottom:16px;line-height:1.5;">' + message + '</div>' +
+        '<div style="display:flex;gap:10px;">' +
+        '<button id="customConfirmNo" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:14px;cursor:pointer;">取消</button>' +
+        '<button id="customConfirmYes" style="flex:1;padding:10px;border:none;border-radius:8px;background:#dc3545;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">确定</button>' +
+        '</div></div>';
+    document.body.appendChild(overlay);
+
+    document.getElementById('customConfirmYes').onclick = function() {
+        document.body.removeChild(overlay);
+        if (callback) callback(true);
+    };
+    document.getElementById('customConfirmNo').onclick = function() {
+        document.body.removeChild(overlay);
+        if (callback) callback(false);
+    };
+    overlay.onclick = function(e) {
+        if (e.target === overlay) {
+            document.body.removeChild(overlay);
+            if (callback) callback(false);
+        }
+    };
+}
+
+// 自定义输入对话框（替代prompt，微信中prompt被禁用）
+function customPrompt(message, defaultValue, callback) {
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;';
+    overlay.innerHTML = '<div style="background:#fff;border-radius:12px;padding:20px;max-width:300px;width:100%;box-shadow:0 4px 20px rgba(0,0,0,0.2);">' +
+        '<div style="font-size:15px;font-weight:600;margin-bottom:12px;line-height:1.5;">' + message + '</div>' +
+        '<input type="number" id="customPromptInput" value="' + (defaultValue || '') + '" step="0.01" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:16px;margin-bottom:14px;outline:none;">' +
+        '<div style="display:flex;gap:10px;">' +
+        '<button id="customPromptCancel" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:14px;cursor:pointer;">取消</button>' +
+        '<button id="customPromptOk" style="flex:1;padding:10px;border:none;border-radius:8px;background:#667eea;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">确定</button>' +
+        '</div></div>';
+    document.body.appendChild(overlay);
+
+    var input = document.getElementById('customPromptInput');
+    input.focus();
+    input.select();
+
+    function cleanup(result) {
+        document.body.removeChild(overlay);
+        if (callback) callback(result);
+    }
+
+    document.getElementById('customPromptOk').onclick = function() {
+        var val = input.value;
+        cleanup(val);
+    };
+    document.getElementById('customPromptCancel').onclick = function() {
+        cleanup(null);
+    };
+    input.onkeydown = function(e) {
+        if (e.key === 'Enter') {
+            cleanup(input.value);
+        }
+    };
+    overlay.onclick = function(e) {
+        if (e.target === overlay) cleanup(null);
+    };
+}
+
+function formatDate(dateStr) {
+    const d = new Date(dateStr);
+    return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function formatDateFull(dateStr) {
+    const d = new Date(dateStr);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function generateId() {
+    return Date.now() + Math.floor(Math.random() * 10000);
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ============================================
+// Tab切换
+// ============================================
+function navClick(tabId, tabIndex) {
+    var navTabs = document.querySelectorAll('.nav-tab');
+    var bottomItems = document.querySelectorAll('.bottom-nav .nav-item');
+    bottomItems.forEach(function(e) { e.classList.remove('active'); });
+    var clickedItem = bottomItems[tabIndex];
+    if (clickedItem) clickedItem.classList.add('active');
+    switchTab(tabId, navTabs[tabIndex]);
+}
+
+function switchTab(tabId, tabEl) {
+    currentTab = tabId;
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + tabId).classList.add('active');
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    if (tabEl) tabEl.classList.add('active');
+
+    if (tabId === 'inventory') renderProductTable();
+    if (tabId === 'purchase') renderPurchaseOrders();
+    if (tabId === 'profit') renderProfit();
+    if (tabId === 'ranking') renderRanking(currentRankingType);
+    if (tabId === 'debt') renderDebtRecords();
+    if (tabId === 'data') renderDataPage();
+
+    // 浮动购物车只在库存页显示
+    updateFab();
+}
+
+function updateFab() {
+    const fab = document.getElementById('cartFab');
+    const total = wholesaleCart.length + retailCart.length;
+    if (currentTab === 'inventory' && total > 0) {
+        fab.style.display = 'flex';
+        document.getElementById('fabBadge').textContent = total;
+    } else {
+        fab.style.display = 'none';
+    }
+    // 更新按钮上的角标
+    document.getElementById('wholesaleBadge').textContent = wholesaleCart.length;
+    document.getElementById('retailBadge').textContent = retailCart.length;
+}
+
+// ============================================
+// 库存管理 - 商品表格（与电脑端一致）
+// ============================================
+function searchProducts() {
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(() => {
+        searchTerm = document.getElementById('searchBox').value.toLowerCase();
+        currentPage = 1;
+        renderProductTable();
+    }, 200);
+}
+
+function renderProductTable() {
+    let list = products;
+
+    // 搜索过滤
+    if (searchTerm) {
+        list = list.filter(p => {
+            const text = (p.code + p.name + (p.category||'') + (p.supplier||'')).toLowerCase();
+            return text.includes(searchTerm);
+        });
+    }
+
+    // 厂家筛选
+    if (currentSupplierFilter) {
+        list = list.filter(p => (p.supplier || '') === currentSupplierFilter);
+    }
+
+    // 更新厂家筛选chips
+    updateSupplierFilters();
+
+    // 分页
+    totalPages = Math.ceil(list.length / pageSize);
+    const start = (currentPage - 1) * pageSize;
+    const pageData = list.slice(start, start + pageSize);
+
+    const tbody = document.getElementById('productTableBody');
+    if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="padding:20px; color:#999;">' + (searchTerm ? '未找到匹配商品' : '暂无商品数据，请从电脑端导入或点击「添加商品」') + '</td></tr>';
+        document.getElementById('pagination').innerHTML = '';
+        return;
+    }
+
+    tbody.innerHTML = pageData.map((p, i) => {
+        const num = start + i + 1;
+        const stockClass = p.stock <= (p.minStock || 5) ? 'low-stock' : '';
+        let purchaseCol = showPurchasePrice ? `<td class="col-purchase" style="color:#fd7e14;">¥${(p.purchasePrice||0).toFixed(2)}</td>` : '<td class="col-purchase" style="display:none;"></td>';
+        let wholesaleCol = showWholesalePrice ? `<td class="col-wholesale" style="color:#007bff;">¥${(p.wholesalePrice||0).toFixed(2)}</td>` : '<td class="col-wholesale" style="display:none;"></td>';
+
+        return `<tr>
+            <td>${num}</td>
+            <td class="name">${escapeHtml(p.name)}</td>
+            <td>${escapeHtml(p.category||'-')}</td>
+            <td style="font-size:11px;">${escapeHtml(p.supplier||'-')}</td>
+            <td class="${stockClass}">${p.stock||0}${escapeHtml(p.unit||'')}</td>
+            ${purchaseCol}
+            ${wholesaleCol}
+            <td style="color:#28a745; font-weight:600;">¥${(p.retailPrice||0).toFixed(2)}</td>
+            <td style="white-space:nowrap;">
+                <button class="action-btn btn-blue btn-sm" onclick="addToCart('wholesale', '${p.id}')">批</button>
+                <button class="action-btn btn-green btn-sm" onclick="addToCart('retail', '${p.id}')">零</button>
+                <button class="action-btn btn-yellow btn-sm" onclick="openStockModal('${p.id}')">库</button>
+            </td>
+        </tr>`;
+    }).join('');
+
+    // 控制列显隐
+    document.querySelectorAll('.col-purchase').forEach(el => el.style.display = showPurchasePrice ? '' : 'none');
+    document.querySelectorAll('.col-wholesale').forEach(el => el.style.display = showWholesalePrice ? '' : 'none');
+
+    // 分页
+    renderPagination(list.length);
+}
+
+function renderPagination(total) {
+    const container = document.getElementById('pagination');
+    if (totalPages <= 1) { container.innerHTML = ''; return; }
+
+    let html = '';
+    html += `<button onclick="goToPage(1)" ${currentPage===1?'disabled':''}>首页</button>`;
+    html += `<button onclick="goToPage(${currentPage-1})" ${currentPage===1?'disabled':''}>上一页</button>`;
+    html += `<span style="padding:0 8px; font-size:12px;">${currentPage}/${totalPages}</span>`;
+    html += `<button onclick="goToPage(${currentPage+1})" ${currentPage>=totalPages?'disabled':''}>下一页</button>`;
+    html += `<button onclick="goToPage(${totalPages})" ${currentPage>=totalPages?'disabled':''}>末页</button>`;
+    container.innerHTML = html;
+}
+
+function goToPage(page) {
+    if (page < 1 || page > totalPages) return;
+    currentPage = page;
+    renderProductTable();
+}
+
+function updateSupplierFilters() {
+    const container = document.getElementById('supplierFilters');
+    let filtered = products;
+    if (searchTerm) {
+        filtered = products.filter(p => {
+            const text = (p.code + p.name + (p.category||'')).toLowerCase();
+            return text.includes(searchTerm);
+        });
+    }
+
+    const suppliers = new Set();
+    filtered.forEach(p => { if (p.supplier) suppliers.add(p.supplier); });
+
+    if (suppliers.size === 0) { container.innerHTML = ''; return; }
+
+    let html = `<span class="chip ${!currentSupplierFilter ? 'active' : ''}" onclick="setSupplierFilter(null)">全部厂家</span>`;
+    Array.from(suppliers).sort().forEach(s => {
+        html += `<span class="chip ${currentSupplierFilter === s ? 'active' : ''}" onclick="setSupplierFilter('${s.replace(/'/g,"\\'")}')">${escapeHtml(s)}</span>`;
+    });
+    container.innerHTML = html;
+}
+
+function setSupplierFilter(supplier) {
+    currentSupplierFilter = supplier;
+    currentPage = 1;
+    renderProductTable();
+}
+
+// ============================================
+// 进货价/批发价显隐
+// ============================================
+function togglePurchasePrice() {
+    showPurchasePrice = !showPurchasePrice;
+    showToast(`进货价已${showPurchasePrice ? '显示' : '隐藏'}`, 'success');
+    renderProductTable();
+}
+
+function toggleWholesalePrice() {
+    showWholesalePrice = !showWholesalePrice;
+    showToast(`批发价已${showWholesalePrice ? '显示' : '隐藏'}`, 'success');
+    renderProductTable();
+}
+
+// ============================================
+// 添加/编辑商品
+// ============================================
+function openAddProductModal() {
+    document.getElementById('productModalTitle').textContent = '添加商品';
+    document.getElementById('productModalBody').innerHTML = `
+        <div class="form-group">
+            <label>商品名称 *</label>
+            <input type="text" id="pName" placeholder="输入商品名称">
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>商品编码</label><input type="text" id="pCode" placeholder="编码"></div>
+            <div class="form-group"><label>分类</label><input type="text" id="pCategory" placeholder="分类"></div>
+        </div>
+        <div class="form-group">
+            <label>厂家名称</label>
+            <input type="text" id="pSupplier" placeholder="输入厂家名称">
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>进货价</label><input type="number" id="pPurchasePrice" step="0.01" value="0"></div>
+            <div class="form-group"><label>批发价</label><input type="number" id="pWholesalePrice" step="0.01" value="0"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>零售价</label><input type="number" id="pRetailPrice" step="0.01" value="0"></div>
+            <div class="form-group"><label>单位</label><input type="text" id="pUnit" placeholder="个/件/箱"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>初始库存</label><input type="number" id="pStock" value="0"></div>
+            <div class="form-group"><label>库存预警值</label><input type="number" id="pMinStock" value="5"></div>
+        </div>
+        <button class="action-btn btn-blue" style="width:100%; padding:12px; font-size:14px;" onclick="saveProduct()">保存商品</button>
+    `;
+    document.getElementById('modal-product').classList.add('show');
+}
+
+function saveProduct() {
+    const name = document.getElementById('pName').value.trim();
+    if (!name) { showToast('请输入商品名称', 'error'); return; }
+
+    const product = {
+        id: generateId(),
+        name: name,
+        code: document.getElementById('pCode').value.trim(),
+        category: document.getElementById('pCategory').value.trim(),
+        supplier: document.getElementById('pSupplier').value.trim(),
+        purchasePrice: parseFloat(document.getElementById('pPurchasePrice').value) || 0,
+        wholesalePrice: parseFloat(document.getElementById('pWholesalePrice').value) || 0,
+        retailPrice: parseFloat(document.getElementById('pRetailPrice').value) || 0,
+        unit: document.getElementById('pUnit').value.trim(),
+        stock: parseInt(document.getElementById('pStock').value) || 0,
+        minStock: parseInt(document.getElementById('pMinStock').value) || 5,
+        createdAt: new Date().toISOString()
+    };
+
+    products.push(product);
+    saveData();
+    closeModal('modal-product');
+    renderProductTable();
+    showToast('商品添加成功', 'success');
+}
+
+// ============================================
+// 库存调整
+// ============================================
+function openStockModal(id) {
+    const product = products.find(p => String(p.id) === String(id));
+    if (!product) return;
+
+    document.getElementById('stockBody').innerHTML = `
+        <div style="background:var(--light); border-radius:8px; padding:10px; margin-bottom:14px;">
+            <div style="font-weight:700; font-size:15px;">${escapeHtml(product.name)}</div>
+            <div style="font-size:12px; color:var(--text-light);">当前库存: ${product.stock}${escapeHtml(product.unit||'')} | 预警值: ${product.minStock||5}</div>
+        </div>
+        <div class="form-group">
+            <label>调整数量（正数增加，负数减少）</label>
+            <input type="number" id="stockAdjust" value="0" style="font-size:18px; font-weight:700; text-align:center;">
+        </div>
+        <div class="form-group">
+            <label>备注</label>
+            <input type="text" id="stockRemark" placeholder="可选">
+        </div>
+        <button class="action-btn btn-blue" style="width:100%; padding:12px;" onclick="adjustStock('${id}')">确认调整</button>
+    `;
+    document.getElementById('modal-stock').classList.add('show');
+}
+
+function adjustStock(id) {
+    const product = products.find(p => String(p.id) === String(id));
+    if (!product) return;
+
+    const adjust = parseInt(document.getElementById('stockAdjust').value) || 0;
+    if (adjust === 0) { showToast('请输入非零数量', 'error'); return; }
+
+    product.stock = (product.stock || 0) + adjust;
+    if (product.stock < 0) product.stock = 0;
+
+    saveData();
+    closeModal('modal-stock');
+    renderProductTable();
+    showToast(`库存已调整${adjust > 0 ? '增加' : '减少'}${Math.abs(adjust)}`, 'success');
+}
+
+// ============================================
+// 购物车
+// ============================================
+function addToCart(cartType, productId) {
+    const p = products.find(pr => String(pr.id) === String(productId));
+    if (!p) { showToast('商品不存在', 'error'); return; }
+
+    const cart = cartType === 'wholesale' ? wholesaleCart : retailCart;
+    const existing = cart.find(item => item.productId === productId);
+
+    if (existing) {
+        existing.quantity += 1;
+    } else {
+        const price = cartType === 'wholesale' ? (p.wholesalePrice || 0) : (p.retailPrice || 0);
+        cart.push({
+            productId: productId,
+            productName: p.name,
+            quantity: 1,
+            price: price,
+            purchasePrice: p.purchasePrice || 0
+        });
+    }
+
+    saveData();
+    updateFab();
+    showToast(`已加入${cartType === 'wholesale' ? '批发' : '零售'}车`, 'success');
+}
+
+function openCart(cartType) {
+    currentCartType = cartType;
+    document.getElementById('cartModalTitle').textContent = cartType === 'wholesale' ? '🛒 批发车' : '🛍️ 零售车';
+    renderCart();
+    document.getElementById('modal-cart').classList.add('show');
+}
+
+function renderCart() {
+    const cart = currentCartType === 'wholesale' ? wholesaleCart : retailCart;
+    const body = document.getElementById('cartModalBody');
+
+    if (cart.length === 0) {
+        body.innerHTML = `<div class="empty"><div class="icon">🛒</div><div>${currentCartType === 'wholesale' ? '批发' : '零售'}车为空</div></div>`;
+        return;
+    }
+
+    let html = '';
+    cart.forEach((item, index) => {
+        let purchaseCol = '';
+        if (showPurchasePrice) {
+            purchaseCol = `<div class="ci-meta">进货: ¥${(item.purchasePrice||0).toFixed(2)} <button style="color:#fd7e14; cursor:pointer; border:1px solid #fd7e14; border-radius:4px; padding:2px 6px; background:#fff; font-size:12px;" onclick="editCartPurchasePrice(${index})">改价</button></div>`;
+        }
+        html += `
+            <div class="cart-item">
+                <div class="ci-info">
+                    <div class="ci-name">${escapeHtml(item.productName)}</div>
+                    ${purchaseCol}
+                    <div class="ci-meta">单价: <button style="color:#007bff; cursor:pointer; border:1px solid #007bff; border-radius:4px; padding:2px 6px; background:#fff; font-size:12px;" onclick="editCartPrice(${index})">¥${item.price.toFixed(2)} 改价</button></div>
+                </div>
+                <div class="ci-qty">
+                    <button onclick="changeCartQty(${index}, -1)">-</button>
+                    <span>${item.quantity}</span>
+                    <button onclick="changeCartQty(${index}, 1)">+</button>
+                </div>
+                <button onclick="removeFromCart(${index})" style="width:26px; height:26px; border:none; border-radius:4px; background:#ffebee; color:#dc3545; cursor:pointer; font-size:14px;">✕</button>
+            </div>
+        `;
+    });
+
+    const total = cart.reduce((s, i) => s + i.quantity * i.price, 0);
+    const cost = cart.reduce((s, i) => s + i.quantity * (i.purchasePrice||0), 0);
+    const profit = total - cost;
+
+    html += `<div style="background:var(--light); border-radius:8px; padding:10px; margin-top:10px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>商品数量</span><span style="font-weight:600;">${cart.length} 种</span></div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>总金额</span><span style="font-weight:700; color:#007bff; font-size:16px;">¥${total.toFixed(2)}</span></div>`;
+    if (showPurchasePrice) {
+        html += `<div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>总成本</span><span style="color:#fd7e14;">¥${cost.toFixed(2)}</span></div>
+                 <div style="display:flex; justify-content:space-between;"><span>预计利润</span><span style="font-weight:600; color:#28a745;">¥${profit.toFixed(2)}</span></div>`;
+    }
+    html += `</div>`;
+
+    html += `<div style="display:flex; gap:8px; margin-top:14px;">
+        <button class="action-btn btn-red" style="flex:1;" onclick="clearCart()">清空</button>
+        <button class="action-btn btn-green" style="flex:2;" onclick="checkoutCart()">✅ 结算</button>
+    </div>`;
+
+    body.innerHTML = html;
+}
+
+function changeCartQty(index, delta) {
+    const cart = currentCartType === 'wholesale' ? wholesaleCart : retailCart;
+    cart[index].quantity += delta;
+    if (cart[index].quantity < 1) cart[index].quantity = 1;
+    saveData();
+    renderCart();
+}
+
+function removeFromCart(index) {
+    const cart = currentCartType === 'wholesale' ? wholesaleCart : retailCart;
+    cart.splice(index, 1);
+    saveData();
+    renderCart();
+    updateFab();
+}
+
+function editCartPrice(index) {
+    var cart = currentCartType === 'wholesale' ? wholesaleCart : retailCart;
+    customPrompt('修改单价', cart[index].price.toFixed(2), function(val) {
+        if (val !== null && !isNaN(parseFloat(val)) && parseFloat(val) >= 0) {
+            cart[index].price = parseFloat(val);
+            saveData();
+            renderCart();
+            showToast('单价已更新', 'success');
+        }
+    });
+}
+
+function editCartPurchasePrice(index) {
+    var cart = currentCartType === 'wholesale' ? wholesaleCart : retailCart;
+    customPrompt('修改进货价', (cart[index].purchasePrice||0).toFixed(2), function(val) {
+        if (val !== null && !isNaN(parseFloat(val)) && parseFloat(val) >= 0) {
+            cart[index].purchasePrice = parseFloat(val);
+            saveData();
+            renderCart();
+            showToast('进货价已更新', 'success');
+        }
+    });
+}
+
+function clearCart() {
+    var cart = currentCartType === 'wholesale' ? wholesaleCart : retailCart;
+    if (cart.length === 0) return;
+    customConfirm('确定清空' + (currentCartType === 'wholesale' ? '批发' : '零售') + '车吗？', function(ok) {
+        if (!ok) return;
+        if (currentCartType === 'wholesale') wholesaleCart = [];
+        else retailCart = [];
+        saveData();
+        renderCart();
+        updateFab();
+        showToast('已清空', 'success');
+    });
+}
+
+// ============================================
+// 结算
+// ============================================
+function checkoutCart() {
+    const cart = currentCartType === 'wholesale' ? wholesaleCart : retailCart;
+    if (cart.length === 0) { showToast('购物车为空', 'error'); return; }
+
+    const total = cart.reduce((s, i) => s + i.quantity * i.price, 0);
+    const cost = cart.reduce((s, i) => s + i.quantity * (i.purchasePrice||0), 0);
+    const profit = total - cost;
+    const typeName = currentCartType === 'wholesale' ? '批发' : '零售';
+
+    document.getElementById('checkoutBody').innerHTML = `
+        <div style="background:var(--light); border-radius:8px; padding:12px; margin-bottom:14px;">
+            <div style="font-size:14px; font-weight:600; margin-bottom:8px;">${typeName}结算明细</div>
+            ${cart.map(i => `<div style="display:flex; justify-content:space-between; padding:3px 0; font-size:13px;"><span>${escapeHtml(i.productName)} x${i.quantity}</span><span>¥${(i.quantity*i.price).toFixed(2)}</span></div>`).join('')}
+            <div style="border-top:1px solid #ddd; margin-top:6px; padding-top:6px; display:flex; justify-content:space-between; font-size:18px; font-weight:700;"><span>合计</span><span style="color:#007bff;">¥${total.toFixed(2)}</span></div>
+            ${showPurchasePrice ? `<div style="display:flex; justify-content:space-between; font-size:13px; color:#28a745;"><span>预计利润</span><span>¥${profit.toFixed(2)}</span></div>` : ''}
+        </div>
+        <div class="form-group"><label>实收金额</label><input type="number" id="actualAmount" value="${total.toFixed(2)}" step="0.01" style="font-size:18px; font-weight:700; color:#007bff;"></div>
+        <div class="form-group"><label>备注</label><input type="text" id="checkoutRemark" placeholder="可选"></div>
+        <button class="action-btn btn-green" style="width:100%; padding:12px; font-size:14px;" onclick="confirmCheckout()">✅ 确认结算</button>
+    `;
+    closeModal('modal-cart');
+    document.getElementById('modal-checkout').classList.add('show');
+}
+
+function confirmCheckout() {
+    const cart = currentCartType === 'wholesale' ? wholesaleCart : retailCart;
+    const actualAmount = parseFloat(document.getElementById('actualAmount').value) || 0;
+    const remark = document.getElementById('checkoutRemark').value.trim();
+
+    cart.forEach(item => {
+        const product = products.find(p => String(p.id) === String(item.productId));
+        if (product) product.stock = Math.max(0, (product.stock||0) - item.quantity);
+
+        const revenue = item.quantity * item.price;
+        const cost = item.quantity * (item.purchasePrice || 0);
+
+        salesRecords.push({
+            id: generateId(),
+            productId: item.productId,
+            productName: item.productName,
+            quantity: item.quantity,
+            salePrice: item.price,
+            purchasePrice: item.purchasePrice || 0,
+            revenue: revenue,
+            profit: revenue - cost,
+            type: currentCartType,
+            date: new Date().toISOString(),
+            remark: remark
+        });
+    });
+
+    if (currentCartType === 'wholesale') wholesaleCart = [];
+    else retailCart = [];
+
+    saveData();
+    closeModal('modal-checkout');
+    updateFab();
+    renderProductTable();
+    showToast('结算成功！', 'success');
+}
+
+// ============================================
+// 采购管理
+// ============================================
+function searchPurchaseOrders() {
+    purchaseSearchTerm = (document.getElementById('purchaseSearchBox').value || '').toLowerCase();
+    renderPurchaseOrders();
+}
+
+function renderPurchaseOrders() {
+    let list = [...purchaseOrders].reverse();
+    if (purchaseSearchTerm) {
+        list = list.filter(p => {
+            const text = (p.productName + (p.remark||'')).toLowerCase();
+            return text.includes(purchaseSearchTerm);
+        });
+    }
+
+    const container = document.getElementById('purchaseList');
+    if (list.length === 0) {
+        container.innerHTML = '<div class="empty"><div class="icon">📋</div><div>暂无采购记录</div></div>';
+        return;
+    }
+
+    container.innerHTML = list.map(p => `
+        <div class="record-card">
+            <div class="r-top">
+                <span class="r-badge purchase">进货</span>
+                <span class="r-date">${formatDate(p.date)}</span>
+            </div>
+            <div class="r-body">${escapeHtml(p.productName)} x${p.quantity} @ ¥${(p.purchasePrice||0).toFixed(2)}</div>
+            ${p.remark ? `<div style="font-size:12px; color:var(--text-light); margin-top:3px;">备注: ${escapeHtml(p.remark)}</div>` : ''}
+            <div class="r-bottom">
+                <span class="r-amount" style="color:#fd7e14;">¥${(p.totalAmount||0).toFixed(2)}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+function openPurchaseModal() {
+    if (products.length === 0) {
+        showToast('请先添加商品', 'warning');
+        return;
+    }
+
+    let productOptions = products.map(p => `<option value="${p.id}">${escapeHtml(p.name)} (库存:${p.stock||0})</option>`).join('');
+
+    document.getElementById('purchaseModalBody').innerHTML = `
+        <div class="form-group">
+            <label>选择商品 *</label>
+            <select id="purchaseProductId" onchange="updatePurchasePrice()">${productOptions}</select>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>进货数量 *</label><input type="number" id="purchaseQty" value="1" min="1"></div>
+            <div class="form-group"><label>进货单价 *</label><input type="number" id="purchasePriceInput" step="0.01" value="0"></div>
+        </div>
+        <div class="form-group"><label>备注</label><input type="text" id="purchaseRemark" placeholder="可选"></div>
+        <button class="action-btn btn-orange" style="width:100%; padding:12px; font-size:14px;" onclick="confirmPurchase()">确认进货</button>
+    `;
+
+    updatePurchasePrice();
+    document.getElementById('modal-purchase').classList.add('show');
+}
+
+function updatePurchasePrice() {
+    const productId = document.getElementById('purchaseProductId').value;
+    const product = products.find(p => String(p.id) === String(productId));
+    if (product) {
+        document.getElementById('purchasePriceInput').value = (product.purchasePrice || 0).toFixed(2);
+    }
+}
+
+function confirmPurchase() {
+    const productId = document.getElementById('purchaseProductId').value;
+    const product = products.find(p => String(p.id) === String(productId));
+    if (!product) { showToast('请选择商品', 'error'); return; }
+
+    const qty = parseInt(document.getElementById('purchaseQty').value) || 0;
+    const price = parseFloat(document.getElementById('purchasePriceInput').value) || 0;
+    const remark = document.getElementById('purchaseRemark').value.trim();
+
+    if (qty < 1) { showToast('数量不能小于1', 'error'); return; }
+
+    product.stock = (product.stock || 0) + qty;
+    if (price > 0) product.purchasePrice = price;
+
+    purchaseOrders.push({
+        id: generateId(),
+        productId: product.id,
+        productName: product.name,
+        quantity: qty,
+        purchasePrice: price,
+        totalAmount: qty * price,
+        date: new Date().toISOString(),
+        remark: remark
+    });
+
+    saveData();
+    closeModal('modal-purchase');
+    renderPurchaseOrders();
+    showToast('进货成功！', 'success');
+}
+
+// ============================================
+// 利润统计
+// ============================================
+function renderProfit() {
+    const now = new Date();
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const todaySales = salesRecords.filter(s => new Date(s.date) >= today);
+    const monthSales = salesRecords.filter(s => new Date(s.date) >= monthStart);
+
+    document.getElementById('todayRevenue').textContent = '¥' + todaySales.reduce((s,r)=>s+(r.revenue||0),0).toFixed(0);
+    document.getElementById('todayProfitVal').textContent = '¥' + todaySales.reduce((s,r)=>s+(r.profit||0),0).toFixed(0);
+    document.getElementById('monthRevenue').textContent = '¥' + monthSales.reduce((s,r)=>s+(r.revenue||0),0).toFixed(0);
+    document.getElementById('monthProfit').textContent = '¥' + monthSales.reduce((s,r)=>s+(r.profit||0),0).toFixed(0);
+
+    const list = document.getElementById('profitList');
+    const recentSales = [...salesRecords].reverse().slice(0, 30);
+
+    if (recentSales.length === 0) {
+        list.innerHTML = '<div class="empty"><div class="icon">💰</div><div>暂无销售记录</div></div>';
+        return;
+    }
+
+    list.innerHTML = recentSales.map(s => {
+        const typeClass = s.type === 'wholesale' ? 'wholesale' : 'retail';
+        const typeName = s.type === 'wholesale' ? '批发' : '零售';
+        let profitCol = showPurchasePrice ? `<span class="r-profit">利润: ¥${(s.profit||0).toFixed(2)}</span>` : '';
+        return `
+            <div class="record-card">
+                <div class="r-top">
+                    <span class="r-badge ${typeClass}">${typeName}</span>
+                    <span class="r-date">${formatDate(s.date)}</span>
+                </div>
+                <div class="r-body">${escapeHtml(s.productName)} x${s.quantity} @ ¥${(s.salePrice||0).toFixed(2)}</div>
+                ${s.remark ? `<div style="font-size:12px; color:var(--text-light); margin-top:3px;">备注: ${escapeHtml(s.remark)}</div>` : ''}
+                <div class="r-bottom">
+                    <span class="r-amount">¥${(s.revenue||0).toFixed(2)}</span>
+                    ${profitCol}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// ============================================
+// 销量排行
+// ============================================
+function renderRanking(type, btn) {
+    currentRankingType = type;
+    document.querySelectorAll('#page-ranking .action-btn').forEach(b => { b.classList.remove('btn-purple'); b.classList.add('btn-outline'); });
+    if (btn) { btn.classList.add('btn-purple'); btn.classList.remove('btn-outline'); }
+
+    const now = new Date();
+    let filtered = salesRecords;
+
+    if (type === 'month') {
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        filtered = salesRecords.filter(s => new Date(s.date) >= start);
+    } else if (type === 'year') {
+        const start = new Date(now.getFullYear(), 0, 1);
+        filtered = salesRecords.filter(s => new Date(s.date) >= start);
+    }
+
+    // 按商品聚合
+    const ranking = {};
+    filtered.forEach(s => {
+        if (!ranking[s.productId]) {
+            ranking[s.productId] = { name: s.productName, qty: 0, revenue: 0, profit: 0 };
+        }
+        ranking[s.productId].qty += s.quantity;
+        ranking[s.productId].revenue += s.revenue || 0;
+        ranking[s.productId].profit += s.profit || 0;
+    });
+
+    const list = Object.values(ranking).sort((a,b) => b.qty - a.qty);
+
+    const container = document.getElementById('rankingList');
+    if (list.length === 0) {
+        container.innerHTML = '<div class="empty"><div class="icon">🏆</div><div>暂无数据</div></div>';
+        return;
+    }
+
+    container.innerHTML = list.map((item, i) => {
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}`;
+        return `
+            <div class="record-card">
+                <div class="r-top">
+                    <span style="font-size:18px;">${medal}</span>
+                    <span style="font-weight:600; font-size:14px;">${escapeHtml(item.name)}</span>
+                </div>
+                <div class="r-bottom">
+                    <span>销量: <b>${item.qty}</b></span>
+                    <span class="r-amount">¥${item.revenue.toFixed(2)}</span>
+                    ${showPurchasePrice ? `<span class="r-profit">利润: ¥${item.profit.toFixed(2)}</span>` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// ============================================
+// 欠款管理
+// ============================================
+function searchDebtRecords() {
+    debtSearchTerm = (document.getElementById('debtSearchBox').value || '').toLowerCase();
+    renderDebtRecords();
+}
+
+function renderDebtRecords() {
+    let list = debtRecords.filter(d => !d.paid);
+    if (debtSearchTerm) {
+        list = list.filter(d => {
+            const text = (d.customerName + d.productName + (d.remark||'')).toLowerCase();
+            return text.includes(debtSearchTerm);
+        });
+    }
+
+    const container = document.getElementById('debtList');
+    if (list.length === 0) {
+        container.innerHTML = '<div class="empty"><div class="icon">📒</div><div>暂无欠款记录</div></div>';
+        return;
+    }
+
+    container.innerHTML = list.map(d => `
+        <div class="record-card">
+            <div class="r-top">
+                <span style="font-weight:600;">${escapeHtml(d.customerName||'客户')}</span>
+                <span class="r-date">${formatDate(d.date)}</span>
+            </div>
+            <div class="r-body">${escapeHtml(d.productName||'')} x${d.quantity||1}</div>
+            ${d.remark ? `<div style="font-size:12px; color:var(--text-light); margin-top:3px;">备注: ${escapeHtml(d.remark)}</div>` : ''}
+            <div class="r-bottom">
+                <span class="r-amount" style="color:var(--danger);">欠款: ¥${(d.amount||0).toFixed(2)}</span>
+                <button class="action-btn btn-green btn-sm" onclick="repayDebt('${d.id}')">还款</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function openAddDebtModal() {
+    let productOptions = '<option value="">-- 选择商品 --</option>' + products.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+
+    document.getElementById('debtModalBody').innerHTML = `
+        <div class="form-group"><label>客户名称 *</label><input type="text" id="debtCustomer" placeholder="客户姓名"></div>
+        <div class="form-group"><label>选择商品</label><select id="debtProductId">${productOptions}</select></div>
+        <div class="form-row">
+            <div class="form-group"><label>数量</label><input type="number" id="debtQty" value="1" min="1"></div>
+            <div class="form-group"><label>欠款金额 *</label><input type="number" id="debtAmount" step="0.01" value="0"></div>
+        </div>
+        <div class="form-group"><label>备注</label><input type="text" id="debtRemark" placeholder="可选"></div>
+        <button class="action-btn btn-red" style="width:100%; padding:12px; font-size:14px;" onclick="confirmAddDebt()">添加欠款</button>
+    `;
+    document.getElementById('modal-debt').classList.add('show');
+}
+
+function confirmAddDebt() {
+    const customer = document.getElementById('debtCustomer').value.trim();
+    const amount = parseFloat(document.getElementById('debtAmount').value) || 0;
+    if (!customer) { showToast('请输入客户名称', 'error'); return; }
+    if (amount <= 0) { showToast('请输入欠款金额', 'error'); return; }
+
+    const productId = document.getElementById('debtProductId').value || null;
+    const product = productId ? products.find(p => String(p.id) === String(productId)) : null;
+
+    debtRecords.push({
+        id: generateId(),
+        customerName: customer,
+        productId: productId,
+        productName: product ? product.name : '',
+        quantity: parseInt(document.getElementById('debtQty').value) || 1,
+        amount: amount,
+        paid: false,
+        date: new Date().toISOString(),
+        remark: document.getElementById('debtRemark').value.trim()
+    });
+
+    saveData();
+    closeModal('modal-debt');
+    renderDebtRecords();
+    showToast('欠款记录已添加', 'success');
+}
+
+function repayDebt(id) {
+    var debt = debtRecords.find(function(d) { return String(d.id) === String(id); });
+    if (!debt) return;
+
+    customConfirm('确认 ' + debt.customerName + ' 已还款 ¥' + (debt.amount||0).toFixed(2) + ' 吗？', function(ok) {
+        if (!ok) return;
+        debt.paid = true;
+        debt.repayDate = new Date().toISOString();
+        saveData();
+        renderDebtRecords();
+        showToast('还款记录已保存', 'success');
+    });
+}
+
+// ============================================
+// 数据管理
+// ============================================
+function renderDataPage() {
+    document.getElementById('dataProductCount').textContent = products.length;
+    document.getElementById('dataSalesCount').textContent = salesRecords.length;
+    document.getElementById('dataPurchaseCount').textContent = purchaseOrders.length;
+    document.getElementById('dataDebtCount').textContent = debtRecords.filter(d=>!d.paid).length;
+}
+
+function exportData() {
+    const data = {
+        version: 'mobile_v2',
+        exportDate: new Date().toISOString(),
+        products: products,
+        salesRecords: salesRecords,
+        purchaseOrders: purchaseOrders,
+        priceHistory: priceHistory,
+        debtRecords: debtRecords
+    };
+
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `进销存数据_${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showToast('数据已导出，可通过微信发送到电脑', 'success');
+}
+
+function importData(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            var data = JSON.parse(e.target.result);
+            customConfirm('导入数据将覆盖当前手机上的所有数据，确定继续吗？', function(ok) {
+                if (!ok) return;
+                if (data.products) products = data.products;
+                if (data.salesRecords) salesRecords = data.salesRecords;
+                if (data.purchaseOrders) purchaseOrders = data.purchaseOrders;
+                if (data.priceHistory) priceHistory = data.priceHistory;
+                if (data.debtRecords) debtRecords = data.debtRecords;
+                saveData();
+                renderDataPage();
+                renderProductTable();
+                showToast('数据导入成功！', 'success');
+            });
+        } catch(err) {
+            showToast('导入失败：文件格式错误', 'error');
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+}
+
+// ============================================
+// 一键保存到桌面
+// ============================================
+function saveToDesktop() {
+    var tip = document.getElementById('desktopTip');
+    var ua = navigator.userAgent.toLowerCase();
+    var isIOS = /iphone|ipad|ipod/.test(ua);
+    var isAndroid = /android/.test(ua);
+    var isWeixin = ua.indexOf('micromessenger') > -1;
+    var html = '';
+
+    // 方式1: Android Chrome 的 beforeinstallprompt 事件
+    if (window.deferredPrompt) {
+        window.deferredPrompt.prompt();
+        window.deferredPrompt.userChoice.then(function(choiceResult) {
+            if (choiceResult.outcome === 'accepted') {
+                showToast('已添加到桌面', 'success');
+            }
+        });
+        return;
+    }
+
+    // 方式2: 根据浏览器类型给出对应指引
+    if (isWeixin) {
+        html = '<b>⚠️ 微信内无法直接添加</b><br><br>';
+        html += '1️⃣ 点击右上角 <b>···</b> 三个点<br>';
+        html += '2️⃣ 选择「<b>在浏览器中打开</b>」<br>';
+        html += '3️⃣ 在浏览器中再点「<b>一键保存桌面图标</b>」<br>';
+        html += '4️⃣ 或在浏览器中手动添加到主屏幕';
+    } else if (isIOS) {
+        html = '<b>🍎 iPhone/iPad 添加方法</b><br><br>';
+        html += '1️⃣ 点击Safari底部「<b>分享</b>」按钮（方框+向上箭头）<br>';
+        html += '2️⃣ 在弹出菜单中选择「<b>添加到主屏幕</b>」<br>';
+        html += '3️⃣ 点击「<b>添加</b>」即可在桌面看到图标';
+    } else if (isAndroid) {
+        html = '<b>🤖 安卓手机添加方法</b><br><br>';
+        html += '1️⃣ 点击浏览器菜单（<b>⋮</b> 或底部菜单键）<br>';
+        html += '2️⃣ 选择「<b>添加到主屏幕</b>」或「<b>添加到桌面</b>」<br>';
+        html += '3️⃣ 确认添加即可在桌面看到图标';
+    } else {
+        html = '<b>💻 添加到桌面方法</b><br><br>';
+        html += '1️⃣ 点击浏览器菜单（<b>⋮</b> 或 Ctrl+D）<br>';
+        html += '2️⃣ 选择「<b>添加到主屏幕</b>」或「<b>书签</b>」';
+    }
+
+    html += '<br><br><div style="text-align:center; padding-top:8px; border-top:1px solid #ddd;">';
+    html += '<button class="action-btn btn-green" style="padding:8px 16px; font-size:13px;" onclick="document.getElementById(\'desktopTip\').style.display=\'none\';">我知道了</button>';
+    html += '</div>';
+
+    tip.innerHTML = html;
+    tip.style.display = 'block';
+}
+
+// 监听 Android Chrome PWA 安装提示
+window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    window.deferredPrompt = e;
+});
+
+// 检测是否已安装为PWA
+window.addEventListener('appinstalled', function() {
+    showToast('已成功添加到桌面！', 'success');
+});
+
+// 注册Service Worker（实现离线缓存）
+// 先注销所有旧Service Worker，再注册新的
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+        // 强制注销所有旧的Service Worker
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for (var i = 0; i < registrations.length; i++) {
+                registrations[i].unregister();
+                console.log('旧Service Worker已注销');
+            }
+            // 清除所有缓存
+            if ('caches' in window) {
+                caches.keys().then(function(names) {
+                    for (var i = 0; i < names.length; i++) {
+                        caches.delete(names[i]);
+                    }
+                    console.log('缓存已清除');
+                });
+            }
+            // 注册新的Service Worker
+            navigator.serviceWorker.register('sw.js').then(function(reg) {
+                console.log('新Service Worker已注册:', reg.scope);
+            }).catch(function(err) {
+                console.log('SW registration failed:', err);
+            });
+        });
+    });
+}
+
+// 检测是否在线
+window.addEventListener('online', function() {
+    showToast('网络已恢复', 'success');
+});
+window.addEventListener('offline', function() {
+    showToast('已离线，使用缓存数据', 'warning');
+});
+
+// ============================================
+// 模态框控制
+// ============================================
+function closeModal(id) {
+    document.getElementById(id).classList.remove('show');
+}
+
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', function(e) {
+        if (e.target === this) this.classList.remove('show');
+    });
+});
+
+// ============================================
+// 初始化
+// ============================================
+function init() {
+    try {
+        loadData();
+    } catch(e) {
+        console.error('数据加载失败:', e);
+    }
+
+    try {
+        var now = new Date();
+        document.getElementById('topDate').textContent = now.getFullYear() + '年' + (now.getMonth()+1) + '月' + now.getDate() + '日';
+    } catch(e) {}
+
+    // 微信检测
+    try {
+        var ua = navigator.userAgent.toLowerCase();
+        if (ua.indexOf('micromessenger') > -1) {
+            document.getElementById('wechatTip').style.display = 'block';
+        }
+    } catch(e) {}
+
+    try {
+        renderProductTable();
+    } catch(e) {
+        console.error('渲染商品表失败:', e);
+    }
+
+    try {
+        updateFab();
+    } catch(e) {}
+}
+
+// 确保DOM加载完成后执行
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
+</script>
+</body>
+</html>
