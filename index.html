@@ -676,21 +676,21 @@ window.onerror = function(msg, url, line, col, err) {
     return false;
 };
 
-// 密码验证（用户已确认密码会写在源码中，风险已知）
+// 密码验证 - 用localStorage记住设备，不用每次输密码
 var _a = ['xin','gda','20','26'];
 function checkAuth() {
     var input = document.getElementById('authPassword').value.trim();
     var pass = _a.join('');
     if (input === pass) {
         document.getElementById('authOverlay').style.display = 'none';
-        try { sessionStorage.setItem('_au', '1'); } catch(e) {}
+        try { localStorage.setItem('_au', '1'); } catch(e) {}
     } else {
         document.getElementById('authError').style.display = 'block';
         document.getElementById('authPassword').value = '';
     }
 }
 try {
-    if (sessionStorage.getItem('_au') === '1') {
+    if (localStorage.getItem('_au') === '1') {
         var ov = document.getElementById('authOverlay');
         if (ov) ov.style.display = 'none';
     }
