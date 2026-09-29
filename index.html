@@ -581,6 +581,35 @@
             如果上方按钮不生效，可手动操作：点击浏览器底部「分享」按钮 → 选择「添加到主屏幕」，即可像APP一样使用，离线也可访问。
         </div>
     </div>
+    <div style="margin-top:14px;">
+        <h4 style="font-size:14px; margin-bottom:8px;">🔐 密码管理</h4>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+            <button class="action-btn btn-purple" style="width:100%; padding:12px; font-size:14px;" onclick="openPasswordModal('owner')">👑 修改老板密码</button>
+            <button class="action-btn btn-orange" style="width:100%; padding:12px; font-size:14px;" onclick="openPasswordModal('staff')">👷 修改员工密码</button>
+        </div>
+    </div>
+</div>
+
+<!-- 密码修改模态框 -->
+<div class="modal-overlay" id="modal-password" style="display:none;">
+    <div class="modal-sheet">
+        <div class="modal-header">
+            <h3 id="passwordModalTitle">修改密码</h3>
+            <button class="close-btn" onclick="closeModal('modal-password')">✕</button>
+        </div>
+        <div style="padding:16px;">
+            <div class="form-group">
+                <label>输入新密码</label>
+                <input type="password" id="newPasswordInput" placeholder="请输入新密码" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:8px; font-size:16px;">
+            </div>
+            <div class="form-group">
+                <label>确认新密码</label>
+                <input type="password" id="confirmPasswordInput" placeholder="再次输入新密码" style="width:100%; padding:12px; border:1px solid #ddd; border-radius:8px; font-size:16px;">
+            </div>
+            <p id="passwordError" style="color:#dc3545; font-size:13px; display:none;"></p>
+            <button class="action-btn btn-blue" style="width:100%; padding:14px; font-size:15px; font-weight:600; margin-top:8px;" onclick="saveNewPassword()">保存密码</button>
+        </div>
+    </div>
 </div>
 
 <!-- 浮动购物车按钮 -->
@@ -761,7 +790,50 @@ function switchAccount() {
     if (err) err.style.display = 'none';
 }
 
+var passwordEditRole = 'owner';
+
+function openPasswordModal(role) {
+    if (currentRole !== 'owner') {
+        showToast('只有老板才能修改密码', 'error');
+        return;
+    }
+    passwordEditRole = role;
+    var title = document.getElementById('passwordModalTitle');
+    title.textContent = role === 'owner' ? '修改老板密码' : '修改员工密码';
+    document.getElementById('newPasswordInput').value = '';
+    document.getElementById('confirmPasswordInput').value = '';
+    document.getElementById('passwordError').style.display = 'none';
+    var modal = document.getElementById('modal-password');
+    modal.style.display = 'flex';
+}
+
+async function saveNewPassword() {
+    var newPwd = document.getElementById('newPasswordInput').value.trim();
+    var confirmPwd = document.getElementById('confirmPasswordInput').value.trim();
+    var errEl = document.getElementById('passwordError');
+
+    if (!newPwd) { errEl.textContent = '请输入新密码'; errEl.style.display = 'block'; return; }
+    if (newPwd.length < 3) { errEl.textContent = '密码至少3个字符'; errEl.style.display = 'block'; return; }
+    if (newPwd !== confirmPwd) { errEl.textContent = '两次输入的密码不一致'; errEl.style.display = 'block'; return; }
+
+    var hash = await sha256(newPwd);
+    PASS_HASHES[passwordEditRole] = hash;
+    try {
+        localStorage.setItem('_au_hash_' + passwordEditRole, hash);
+    } catch(e) {}
+
+    closeModal('modal-password');
+    showToast((passwordEditRole === 'owner' ? '老板' : '员工') + '密码已更新', 'success');
+}
+
 (function() {
+    try {
+        var customOwnerHash = localStorage.getItem('_au_hash_owner');
+        if (customOwnerHash) PASS_HASHES.owner = customOwnerHash;
+        var customStaffHash = localStorage.getItem('_au_hash_staff');
+        if (customStaffHash) PASS_HASHES.staff = customStaffHash;
+    } catch(e) {}
+
     try {
         var savedRole = localStorage.getItem('_au_role');
         var savedHash = localStorage.getItem('_au_hash');
