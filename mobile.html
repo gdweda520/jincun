@@ -1251,6 +1251,7 @@ function renderProductTable() {
                 <button class="action-btn btn-blue btn-sm" onclick="addToCart('wholesale', '${p.id}')">批</button>
                 <button class="action-btn btn-green btn-sm" onclick="addToCart('retail', '${p.id}')">零</button>
                 <button class="action-btn btn-yellow btn-sm" onclick="openStockModal('${p.id}')">库</button>
+                <button class="action-btn btn-purple btn-sm" onclick="openEditProductModal('${p.id}')">编</button>
             </td>
         </tr>`;
     }).join('');
@@ -1368,6 +1369,70 @@ function openAddProductModal() {
 function openProductModal() {
     document.getElementById('modal-product').classList.add('show');
     updateSupplierDatalist();
+}
+
+function openEditProductModal(id) {
+    const product = products.find(p => String(p.id) === String(id));
+    if (!product) { showToast('商品不存在', 'error'); return; }
+
+    document.getElementById('productModalTitle').textContent = '编辑商品';
+    document.getElementById('productModalBody').innerHTML = `
+        <div class="form-group">
+            <label>商品名称 *</label>
+            <input type="text" id="pName" value="${escapeHtml(product.name)}">
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>商品编码</label><input type="text" id="pCode" value="${escapeHtml(product.code||'')}"></div>
+            <div class="form-group"><label>分类</label><input type="text" id="pCategory" value="${escapeHtml(product.category||'')}"></div>
+        </div>
+        <div class="form-group">
+            <label>厂家名称</label>
+            <input type="text" id="pSupplier" value="${escapeHtml(product.supplier||'')}" list="supplierList">
+            <datalist id="supplierList"></datalist>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>进货价</label><input type="number" id="pPurchasePrice" step="0.01" value="${product.purchasePrice||0}"></div>
+            <div class="form-group"><label>批发价</label><input type="number" id="pWholesalePrice" step="0.01" value="${product.wholesalePrice||0}"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>零售价</label><input type="number" id="pRetailPrice" step="0.01" value="${product.retailPrice||0}"></div>
+            <div class="form-group"><label>单位</label><input type="text" id="pUnit" value="${escapeHtml(product.unit||'')}"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>库存</label><input type="number" id="pStock" value="${product.stock||0}"></div>
+            <div class="form-group"><label>库存预警值</label><input type="number" id="pMinStock" value="${product.minStock||5}"></div>
+        </div>
+        <button class="action-btn btn-blue" style="width:100%; padding:12px; font-size:14px;" onclick="saveEditProduct('${product.id}')">保存修改</button>
+    `;
+    document.getElementById('modal-product').classList.add('show');
+    updateSupplierDatalist();
+}
+
+function saveEditProduct(id) {
+    const product = products.find(p => String(p.id) === String(id));
+    if (!product) { showToast('商品不存在', 'error'); return; }
+
+    const name = document.getElementById('pName').value.trim();
+    if (!name) { showToast('请输入商品名称', 'error'); return; }
+
+    product.name = name;
+    product.code = document.getElementById('pCode').value.trim();
+    product.category = document.getElementById('pCategory').value.trim();
+    product.supplier = document.getElementById('pSupplier').value.trim();
+    product.purchasePrice = parseFloat(document.getElementById('pPurchasePrice').value) || 0;
+    product.wholesalePrice = parseFloat(document.getElementById('pWholesalePrice').value) || 0;
+    product.retailPrice = parseFloat(document.getElementById('pRetailPrice').value) || 0;
+    product.unit = document.getElementById('pUnit').value.trim();
+    product.stock = parseInt(document.getElementById('pStock').value) || 0;
+    product.minStock = parseInt(document.getElementById('pMinStock').value) || 5;
+    product.updatedAt = new Date().toISOString();
+
+    saveData();
+    closeModal('modal-product');
+    renderProductTable();
+    updateSupplierDatalist();
+    renderSupplierManagement();
+    showToast('商品已更新', 'success');
 }
 
 function saveProduct() {
