@@ -2677,6 +2677,7 @@ function renderProfit() {
         const typeClass = s.type === 'wholesale' ? 'wholesale' : 'retail';
         const typeName = s.type === 'wholesale' ? '批发' : '零售';
         let profitCol = showPurchasePrice ? `<span class="r-profit">利润: ¥${(s.profit||0).toFixed(2)}</span>` : '';
+        let customerCol = s.customerName ? `<div style="font-size:12px; color:#007bff; margin-top:3px; cursor:pointer;" onclick="event.stopPropagation(); openCustomerDetail('${s.customerId}')">👤 ${escapeHtml(s.customerName)} (点我看消费)</div>` : '';
         return `
             <div class="record-card">
                 <div class="r-top">
@@ -2684,6 +2685,7 @@ function renderProfit() {
                     <span class="r-date">${formatDate(s.date)}</span>
                 </div>
                 <div class="r-body">${escapeHtml(s.productName)} x${s.quantity} @ ¥${(s.salePrice||0).toFixed(2)}</div>
+                ${customerCol}
                 ${s.remark ? `<div style="font-size:12px; color:var(--text-light); margin-top:3px;">备注: ${escapeHtml(s.remark)}</div>` : ''}
                 <div class="r-bottom">
                     <span class="r-amount">¥${(s.revenue||0).toFixed(2)}</span>
