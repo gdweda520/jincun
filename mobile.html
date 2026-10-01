@@ -582,6 +582,15 @@
         </div>
     </div>
     <div style="margin-top:14px;">
+        <h4 style="font-size:14px; margin-bottom:8px;">👥 客户管理</h4>
+        <div style="display:flex; gap:8px; margin-bottom:10px;">
+            <input type="text" id="newCustomerNameInput" placeholder="客户姓名" style="flex:1; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:14px;">
+            <input type="text" id="newCustomerPhoneInput" placeholder="电话(可选)" style="width:110px; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:14px;">
+            <button class="action-btn btn-green" style="padding:10px 14px; font-size:14px; white-space:nowrap;" onclick="addCustomer()">添加</button>
+        </div>
+        <div id="customerListContainer" style="display:flex; flex-direction:column; gap:6px;"></div>
+    </div>
+    <div style="margin-top:14px;">
         <h4 style="font-size:14px; margin-bottom:8px;">🏭 厂家管理</h4>
         <div style="display:flex; gap:8px; margin-bottom:10px;">
             <input type="text" id="newSupplierInput" placeholder="输入新厂家名称" style="flex:1; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:14px;">
@@ -595,6 +604,17 @@
             <button class="action-btn btn-purple" style="width:100%; padding:12px; font-size:14px;" onclick="openPasswordModal('owner')">👑 修改老板密码</button>
             <button class="action-btn btn-orange" style="width:100%; padding:12px; font-size:14px;" onclick="openPasswordModal('staff')">👷 修改员工密码</button>
         </div>
+    </div>
+</div>
+
+<!-- 客户详情模态框 -->
+<div class="modal-overlay" id="modal-customer-detail" style="display:none;">
+    <div class="modal-sheet">
+        <div class="modal-header">
+            <h3>客户详情</h3>
+            <button class="close-btn" onclick="closeModal('modal-customer-detail')">✕</button>
+        </div>
+        <div class="modal-body" id="customerDetailBody"></div>
     </div>
 </div>
 
@@ -621,7 +641,7 @@
 </div>
 
 <!-- 浮动购物车按钮 -->
-<button class="fab fab-cart" onclick="openCart(wholesaleCart.length > 0 ? 'wholesale' : 'retail')" id="cartFab" style="display:none;">
+<button class="fab fab-cart" id="cartFab" style="display:none; touch-action:none;">
     🛒<span class="badge" id="fabBadge">0</span>
 </button>
 
@@ -895,6 +915,177 @@ function switchAccount() {
     if (err) err.style.display = 'none';
 }
 
+// ============================================
+// 客户管理
+// ============================================
+function getCustomers() {
+    return customers || [];
+}
+
+function saveCustomers(list) {
+    customers = list;
+    saveData();
+}
+
+function renderCustomerList() {
+    var container = document.getElementById('customerListContainer');
+    if (!container) return;
+    var list = getCustomers();
+
+    if (list.length === 0) {
+        container.innerHTML = '<div style="color:#999; font-size:13px; padding:8px;">暂无客户，结算时可录入客户信息</div>';
+        return;
+    }
+
+    var now = new Date();
+    var thisMonth = now.getFullYear() + '-' + (now.getMonth() + 1);
+
+    list = list.slice().sort(function(a, b) {
+        var totalA = getCustomerStats(a.id).totalRevenue;
+        var totalB = getCustomerStats(b.id).totalRevenue;
+        return totalB - totalA;
+    });
+
+    container.innerHTML = list.map(function(c) {
+        var stats = getCustomerStats(c.id);
+        return '<div onclick="openCustomerDetail(\'' + c.id + '\')" style="display:flex; justify-content:space-between; align-items:center; background:var(--card); border-radius:8px; padding:10px 12px; cursor:pointer;">' +
+            '<div>' +
+                '<div style="font-size:14px; font-weight:600;">' + escapeHtml(c.name) + '</div>' +
+                '<div style="font-size:11px; color:#999;">' + (c.phone ? escapeHtml(c.phone) + ' · ' : '') + stats.orderCount + '笔订单</div>' +
+            '</div>' +
+            '<div style="text-align:right;">' +
+                '<div style="font-size:14px; font-weight:700; color:#007bff;">¥' + stats.totalRevenue.toFixed(2) + '</div>' +
+                '<div style="font-size:11px; color:#999;">本月 ¥' + stats.monthRevenue.toFixed(2) + '</div>' +
+            '</div>' +
+        '</div>';
+    }).join('');
+}
+
+function getCustomerStats(customerId) {
+    var records = salesRecords.filter(function(r) { return r.customerId === customerId; });
+    var totalRevenue = records.reduce(function(s, r) { return s + (r.revenue || 0); }, 0);
+    var totalProfit = records.reduce(function(s, r) { return s + (r.profit || 0); }, 0);
+    var now = new Date();
+    var thisMonth = now.getFullYear() + '-' + (now.getMonth() + 1);
+    var monthRevenue = records.filter(function(r) {
+        var d = new Date(r.date);
+        return (d.getFullYear() + '-' + (d.getMonth() + 1)) === thisMonth;
+    }).reduce(function(s, r) { return s + (r.revenue || 0); }, 0);
+    return {
+        orderCount: records.length,
+        totalRevenue: totalRevenue,
+        totalProfit: totalProfit,
+        monthRevenue: monthRevenue
+    };
+}
+
+function addCustomer() {
+    var nameInput = document.getElementById('newCustomerNameInput');
+    var phoneInput = document.getElementById('newCustomerPhoneInput');
+    var name = nameInput.value.trim();
+    var phone = phoneInput.value.trim();
+    if (!name) { showToast('请输入客户姓名', 'error'); return; }
+    var list = getCustomers();
+    if (list.some(function(c) { return c.name === name; })) {
+        showToast('该客户已存在', 'error');
+        return;
+    }
+    list.push({
+        id: 'C' + Date.now(),
+        name: name,
+        phone: phone,
+        createdAt: new Date().toISOString()
+    });
+    saveCustomers(list);
+    nameInput.value = '';
+    phoneInput.value = '';
+    renderCustomerList();
+    showToast('客户「' + name + '」已添加', 'success');
+}
+
+function openCustomerDetail(customerId) {
+    var customer = getCustomers().find(function(c) { return c.id === customerId; });
+    if (!customer) return;
+    var stats = getCustomerStats(customerId);
+    var records = salesRecords.filter(function(r) { return r.customerId === customerId; })
+        .sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+
+    var recordsHtml = records.length === 0
+        ? '<div style="color:#999; padding:20px; text-align:center;">暂无购买记录</div>'
+        : records.slice(0, 50).map(function(r) {
+            var d = new Date(r.date);
+            var dateStr = d.getFullYear() + '/' + (d.getMonth()+1) + '/' + d.getDate();
+            return '<div style="padding:8px 0; border-bottom:1px solid #f0f0f0;">' +
+                '<div style="display:flex; justify-content:space-between;">' +
+                    '<span style="font-size:13px;">' + escapeHtml(r.productName) + ' x' + r.quantity + '</span>' +
+                    '<span style="font-weight:600; color:#007bff;">¥' + (r.revenue||0).toFixed(2) + '</span>' +
+                '</div>' +
+                '<div style="font-size:11px; color:#999; margin-top:2px;">' + dateStr + ' · ' + (r.type === 'wholesale' ? '批发' : '零售') + (r.remark ? ' · ' + escapeHtml(r.remark) : '') + '</div>' +
+            '</div>';
+        }).join('');
+
+    document.getElementById('customerDetailBody').innerHTML = `
+        <div style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:#fff; border-radius:12px; padding:16px; margin-bottom:14px;">
+            <div style="font-size:18px; font-weight:700;">${escapeHtml(customer.name)}</div>
+            <div style="font-size:13px; opacity:0.9; margin-top:4px;">${customer.phone ? '📞 ' + escapeHtml(customer.phone) : ''}</div>
+            <div style="display:flex; justify-content:space-between; margin-top:14px;">
+                <div><div style="font-size:11px; opacity:0.8;">累计消费</div><div style="font-size:18px; font-weight:700;">¥${stats.totalRevenue.toFixed(2)}</div></div>
+                <div><div style="font-size:11px; opacity:0.8;">本月消费</div><div style="font-size:18px; font-weight:700;">¥${stats.monthRevenue.toFixed(2)}</div></div>
+                <div><div style="font-size:11px; opacity:0.8;">订单数</div><div style="font-size:18px; font-weight:700;">${stats.orderCount}</div></div>
+            </div>
+        </div>
+        <div style="font-size:14px; font-weight:600; margin-bottom:8px;">最近购买记录</div>
+        <div style="max-height:300px; overflow-y:auto;">${recordsHtml}</div>
+        <div style="display:flex; gap:8px; margin-top:14px;">
+            <button class="action-btn btn-yellow" style="flex:1;" onclick="editCustomer('${customer.id}')">编辑资料</button>
+            <button class="action-btn btn-red" style="flex:1;" onclick="deleteCustomer('${customer.id}')">删除客户</button>
+        </div>
+    `;
+    document.getElementById('modal-customer-detail').classList.add('show');
+}
+
+function editCustomer(customerId) {
+    var list = getCustomers();
+    var customer = list.find(function(c) { return c.id === customerId; });
+    if (!customer) return;
+    closeModal('modal-customer-detail');
+
+    customPrompt('修改客户姓名', customer.name, function(newName) {
+        if (!newName || !newName.trim()) return;
+        newName = newName.trim();
+        customPrompt('修改客户电话', customer.phone || '', function(newPhone) {
+            customer.name = newName;
+            customer.phone = newPhone ? newPhone.trim() : '';
+            saveCustomers(list);
+            renderCustomerList();
+            showToast('客户资料已更新', 'success');
+        });
+    });
+}
+
+function deleteCustomer(customerId) {
+    var list = getCustomers();
+    var customer = list.find(function(c) { return c.id === customerId; });
+    if (!customer) return;
+    closeModal('modal-customer-detail');
+
+    var records = salesRecords.filter(function(r) { return r.customerId === customerId; });
+    if (records.length > 0) {
+        customConfirm('该客户有' + records.length + '笔购买记录，确定删除吗？（记录数据不会丢失）', function(ok) {
+            if (!ok) return;
+            list = list.filter(function(c) { return c.id !== customerId; });
+            saveCustomers(list);
+            renderCustomerList();
+            showToast('客户已删除', 'success');
+        });
+    } else {
+        list = list.filter(function(c) { return c.id !== customerId; });
+        saveCustomers(list);
+        renderCustomerList();
+        showToast('客户已删除', 'success');
+    }
+}
+
 var passwordEditRole = 'owner';
 
 function openPasswordModal(role) {
@@ -961,6 +1152,7 @@ let priceHistory = [];
 let wholesaleCart = [];
 let retailCart = [];
 let debtRecords = [];
+let customers = [];
 
 let currentTab = 'inventory';
 let currentCartType = 'wholesale';
@@ -984,7 +1176,8 @@ const KEYS = {
     priceHistory: 'priceHistory_noimg',
     wholesaleCart: 'wholesaleCart_noimg',
     retailCart: 'retailCart_noimg',
-    debts: 'debtRecords_noimg'
+    debts: 'debtRecords_noimg',
+    customers: 'customers_noimg'
 };
 
 // ============================================
@@ -1003,6 +1196,7 @@ function saveData() {
         memStorage.wholesaleCart = JSON.stringify(wholesaleCart);
         memStorage.retailCart = JSON.stringify(retailCart);
         memStorage.debts = JSON.stringify(debtRecords);
+        memStorage.customers = JSON.stringify(customers);
         return;
     }
     try {
@@ -1013,6 +1207,7 @@ function saveData() {
         localStorage.setItem(KEYS.wholesaleCart, JSON.stringify(wholesaleCart));
         localStorage.setItem(KEYS.retailCart, JSON.stringify(retailCart));
         localStorage.setItem(KEYS.debts, JSON.stringify(debtRecords));
+        localStorage.setItem(KEYS.customers, JSON.stringify(customers));
     } catch(e) {
         memStorage.products = JSON.stringify(products);
         memStorage.sales = JSON.stringify(salesRecords);
@@ -1021,6 +1216,7 @@ function saveData() {
         memStorage.wholesaleCart = JSON.stringify(wholesaleCart);
         memStorage.retailCart = JSON.stringify(retailCart);
         memStorage.debts = JSON.stringify(debtRecords);
+        memStorage.customers = JSON.stringify(customers);
     }
 }
 
@@ -1033,6 +1229,7 @@ function loadData() {
         wholesaleCart = JSON.parse(memStorage.wholesaleCart || '[]');
         retailCart = JSON.parse(memStorage.retailCart || '[]');
         debtRecords = JSON.parse(memStorage.debts || '[]');
+        customers = JSON.parse(memStorage.customers || '[]');
         return;
     }
     try { products = JSON.parse(localStorage.getItem(KEYS.products)) || []; } catch(e) { products = []; }
@@ -1042,6 +1239,7 @@ function loadData() {
     try { wholesaleCart = JSON.parse(localStorage.getItem(KEYS.wholesaleCart)) || []; } catch(e) { wholesaleCart = []; }
     try { retailCart = JSON.parse(localStorage.getItem(KEYS.retailCart)) || []; } catch(e) { retailCart = []; }
     try { debtRecords = JSON.parse(localStorage.getItem(KEYS.debts)) || []; } catch(e) { debtRecords = []; }
+    try { customers = JSON.parse(localStorage.getItem(KEYS.customers)) || []; } catch(e) { customers = []; }
 }
 
 // ============================================
@@ -1183,6 +1381,86 @@ function updateFab() {
     // 更新按钮上的角标
     document.getElementById('wholesaleBadge').textContent = wholesaleCart.length;
     document.getElementById('retailBadge').textContent = retailCart.length;
+}
+
+// ============================================
+// 可拖动购物车图标
+// ============================================
+var fabDragState = {
+    isDragging: false,
+    startX: 0,
+    startY: 0,
+    startLeft: 0,
+    startTop: 0,
+    moved: false
+};
+
+function initFabDrag() {
+    var fab = document.getElementById('cartFab');
+    if (!fab) return;
+
+    try {
+        var savedPos = JSON.parse(localStorage.getItem('fabPos') || 'null');
+        if (savedPos) {
+            fab.style.right = 'auto';
+            fab.style.bottom = 'auto';
+            fab.style.left = savedPos.left + 'px';
+            fab.style.top = savedPos.top + 'px';
+        }
+    } catch(e) {}
+
+    var startDrag = function(e) {
+        var touch = e.touches ? e.touches[0] : e;
+        fabDragState.isDragging = true;
+        fabDragState.moved = false;
+        fabDragState.startX = touch.clientX;
+        fabDragState.startY = touch.clientY;
+        var rect = fab.getBoundingClientRect();
+        fabDragState.startLeft = rect.left;
+        fabDragState.startTop = rect.top;
+        fab.style.right = 'auto';
+        fab.style.bottom = 'auto';
+        fab.style.left = rect.left + 'px';
+        fab.style.top = rect.top + 'px';
+        e.preventDefault();
+    };
+
+    var onDrag = function(e) {
+        if (!fabDragState.isDragging) return;
+        var touch = e.touches ? e.touches[0] : e;
+        var dx = touch.clientX - fabDragState.startX;
+        var dy = touch.clientY - fabDragState.startY;
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) fabDragState.moved = true;
+        var newLeft = fabDragState.startLeft + dx;
+        var newTop = fabDragState.startTop + dy;
+        var maxLeft = window.innerWidth - fab.offsetWidth - 5;
+        var maxTop = window.innerHeight - fab.offsetHeight - 5;
+        newLeft = Math.max(5, Math.min(newLeft, maxLeft));
+        newTop = Math.max(5, Math.min(newTop, maxTop));
+        fab.style.left = newLeft + 'px';
+        fab.style.top = newTop + 'px';
+        e.preventDefault();
+    };
+
+    var endDrag = function(e) {
+        if (!fabDragState.isDragging) return;
+        fabDragState.isDragging = false;
+        if (!fabDragState.moved) {
+            openCart(wholesaleCart.length > 0 ? 'wholesale' : 'retail');
+        } else {
+            try {
+                var rect = fab.getBoundingClientRect();
+                localStorage.setItem('fabPos', JSON.stringify({ left: rect.left, top: rect.top }));
+            } catch(e) {}
+        }
+    };
+
+    fab.addEventListener('touchstart', startDrag, { passive: false });
+    fab.addEventListener('touchmove', onDrag, { passive: false });
+    fab.addEventListener('touchend', endDrag);
+    fab.addEventListener('mousedown', startDrag);
+    document.addEventListener('mousemove', onDrag);
+    document.addEventListener('mouseup', endDrag);
 }
 
 // ============================================
@@ -1523,7 +1801,8 @@ function addToCart(cartType, productId) {
             productName: p.name,
             quantity: 1,
             price: price,
-            purchasePrice: p.purchasePrice || 0
+            purchasePrice: p.purchasePrice || 0,
+            selected: true
         });
     }
 
@@ -1548,15 +1827,25 @@ function renderCart() {
         return;
     }
 
-    let html = '';
+    const allSelected = cart.every(i => i.selected);
+    const selectedCount = cart.filter(i => i.selected).length;
+
+    let html = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #eee;">
+        <label style="display:flex; align-items:center; gap:6px; font-size:14px; font-weight:600; cursor:pointer;">
+            <input type="checkbox" id="selectAllCart" ${allSelected ? 'checked' : ''} onchange="toggleSelectAllCart()" style="width:18px; height:18px;">
+            全选 (${selectedCount}/${cart.length})
+        </label>
+    </div>`;
+
     cart.forEach((item, index) => {
         let purchaseCol = '';
         if (showPurchasePrice) {
             purchaseCol = `<div class="ci-meta">进货: ¥${(item.purchasePrice||0).toFixed(2)} <button style="color:#fd7e14; cursor:pointer; border:1px solid #fd7e14; border-radius:4px; padding:2px 6px; background:#fff; font-size:12px;" onclick="editCartPurchasePrice(${index})">改价</button></div>`;
         }
         html += `
-            <div class="cart-item">
-                <div class="ci-info">
+            <div class="cart-item" style="${item.selected ? '' : 'opacity:0.5;'}">
+                <input type="checkbox" ${item.selected ? 'checked' : ''} onchange="toggleCartItem(${index})" style="width:18px; height:18px; flex-shrink:0; margin-right:8px;">
+                <div class="ci-info" style="flex:1;">
                     <div class="ci-name">${escapeHtml(item.productName)}</div>
                     ${purchaseCol}
                     <div class="ci-meta">单价: <button style="color:#007bff; cursor:pointer; border:1px solid #007bff; border-radius:4px; padding:2px 6px; background:#fff; font-size:12px;" onclick="editCartPrice(${index})">¥${item.price.toFixed(2)} 改价</button></div>
@@ -1571,12 +1860,13 @@ function renderCart() {
         `;
     });
 
-    const total = cart.reduce((s, i) => s + i.quantity * i.price, 0);
-    const cost = cart.reduce((s, i) => s + i.quantity * (i.purchasePrice||0), 0);
+    const selectedItems = cart.filter(i => i.selected);
+    const total = selectedItems.reduce((s, i) => s + i.quantity * i.price, 0);
+    const cost = selectedItems.reduce((s, i) => s + i.quantity * (i.purchasePrice||0), 0);
     const profit = total - cost;
 
     html += `<div style="background:var(--light); border-radius:8px; padding:10px; margin-top:10px;">
-        <div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>商品数量</span><span style="font-weight:600;">${cart.length} 种</span></div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>已选商品</span><span style="font-weight:600;">${selectedItems.length} 种 / ${cart.length} 种</span></div>
         <div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>总金额</span><span style="font-weight:700; color:#007bff; font-size:16px;">¥${total.toFixed(2)}</span></div>`;
     if (showPurchasePrice) {
         html += `<div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>总成本</span><span style="color:#fd7e14;">¥${cost.toFixed(2)}</span></div>
@@ -1586,10 +1876,25 @@ function renderCart() {
 
     html += `<div style="display:flex; gap:8px; margin-top:14px;">
         <button class="action-btn btn-red" style="flex:1;" onclick="clearCart()">清空</button>
-        <button class="action-btn btn-green" style="flex:2;" onclick="checkoutCart()">✅ 结算</button>
+        <button class="action-btn btn-green" style="flex:2;" onclick="checkoutCart()">✅ 结算已选</button>
     </div>`;
 
     body.innerHTML = html;
+}
+
+function toggleSelectAllCart() {
+    const cart = currentCartType === 'wholesale' ? wholesaleCart : retailCart;
+    const allSelected = cart.every(i => i.selected);
+    cart.forEach(i => { i.selected = !allSelected; });
+    saveData();
+    renderCart();
+}
+
+function toggleCartItem(index) {
+    const cart = currentCartType === 'wholesale' ? wholesaleCart : retailCart;
+    cart[index].selected = !cart[index].selected;
+    saveData();
+    renderCart();
 }
 
 function changeCartQty(index, delta) {
@@ -1651,19 +1956,37 @@ function clearCart() {
 // ============================================
 function checkoutCart() {
     const cart = currentCartType === 'wholesale' ? wholesaleCart : retailCart;
-    if (cart.length === 0) { showToast('购物车为空', 'error'); return; }
+    const selectedItems = cart.filter(i => i.selected);
+    if (selectedItems.length === 0) { showToast('请先选择要结算的商品', 'error'); return; }
 
-    const total = cart.reduce((s, i) => s + i.quantity * i.price, 0);
-    const cost = cart.reduce((s, i) => s + i.quantity * (i.purchasePrice||0), 0);
+    const total = selectedItems.reduce((s, i) => s + i.quantity * i.price, 0);
+    const cost = selectedItems.reduce((s, i) => s + i.quantity * (i.purchasePrice||0), 0);
     const profit = total - cost;
     const typeName = currentCartType === 'wholesale' ? '批发' : '零售';
 
+    // 获取客户列表用于选择
+    var customers = getCustomers();
+    var customerOptions = '<option value="">散客（不记录客户）</option>' + customers.map(function(c) {
+        return '<option value="' + escapeHtml(c.id) + '">' + escapeHtml(c.name) + (c.phone ? ' (' + escapeHtml(c.phone) + ')' : '') + '</option>';
+    }).join('');
+
     document.getElementById('checkoutBody').innerHTML = `
         <div style="background:var(--light); border-radius:8px; padding:12px; margin-bottom:14px;">
-            <div style="font-size:14px; font-weight:600; margin-bottom:8px;">${typeName}结算明细</div>
-            ${cart.map(i => `<div style="display:flex; justify-content:space-between; padding:3px 0; font-size:13px;"><span>${escapeHtml(i.productName)} x${i.quantity}</span><span>¥${(i.quantity*i.price).toFixed(2)}</span></div>`).join('')}
+            <div style="font-size:14px; font-weight:600; margin-bottom:8px;">${typeName}结算明细 (${selectedItems.length}种商品)</div>
+            ${selectedItems.map(i => `<div style="display:flex; justify-content:space-between; padding:3px 0; font-size:13px;"><span>${escapeHtml(i.productName)} x${i.quantity}</span><span>¥${(i.quantity*i.price).toFixed(2)}</span></div>`).join('')}
             <div style="border-top:1px solid #ddd; margin-top:6px; padding-top:6px; display:flex; justify-content:space-between; font-size:18px; font-weight:700;"><span>合计</span><span style="color:#007bff;">¥${total.toFixed(2)}</span></div>
             ${showPurchasePrice ? `<div style="display:flex; justify-content:space-between; font-size:13px; color:#28a745;"><span>预计利润</span><span>¥${profit.toFixed(2)}</span></div>` : ''}
+        </div>
+        <div class="form-group"><label>选择客户</label>
+            <select id="checkoutCustomerId" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:14px;">
+                ${customerOptions}
+            </select>
+        </div>
+        <div class="form-group"><label>或新增客户</label>
+            <div style="display:flex; gap:6px;">
+                <input type="text" id="newCustomerName" placeholder="客户姓名" style="flex:1; padding:8px; border:1px solid #ddd; border-radius:6px; font-size:13px;">
+                <input type="text" id="newCustomerPhone" placeholder="电话(可选)" style="width:110px; padding:8px; border:1px solid #ddd; border-radius:6px; font-size:13px;">
+            </div>
         </div>
         <div class="form-group"><label>实收金额</label><input type="number" id="actualAmount" value="${total.toFixed(2)}" step="0.01" style="font-size:18px; font-weight:700; color:#007bff;"></div>
         <div class="form-group"><label>备注</label><input type="text" id="checkoutRemark" placeholder="可选"></div>
@@ -1675,10 +1998,43 @@ function checkoutCart() {
 
 function confirmCheckout() {
     const cart = currentCartType === 'wholesale' ? wholesaleCart : retailCart;
+    const selectedItems = cart.filter(i => i.selected);
+    if (selectedItems.length === 0) { showToast('没有要结算的商品', 'error'); return; }
+
     const actualAmount = parseFloat(document.getElementById('actualAmount').value) || 0;
     const remark = document.getElementById('checkoutRemark').value.trim();
 
-    cart.forEach(item => {
+    // 处理客户
+    var customerId = null;
+    var customerName = '';
+    var newName = document.getElementById('newCustomerName') ? document.getElementById('newCustomerName').value.trim() : '';
+    var newPhone = document.getElementById('newCustomerPhone') ? document.getElementById('newCustomerPhone').value.trim() : '';
+    var selectedCustId = document.getElementById('checkoutCustomerId') ? document.getElementById('checkoutCustomerId').value : '';
+
+    if (newName) {
+        // 新增客户
+        var newCustomer = {
+            id: 'C' + Date.now(),
+            name: newName,
+            phone: newPhone,
+            createdAt: new Date().toISOString()
+        };
+        var customers = getCustomers();
+        customers.push(newCustomer);
+        saveCustomers(customers);
+        customerId = newCustomer.id;
+        customerName = newCustomer.name;
+    } else if (selectedCustId) {
+        // 选择已有客户
+        var customers = getCustomers();
+        var cust = customers.find(function(c) { return c.id === selectedCustId; });
+        if (cust) {
+            customerId = cust.id;
+            customerName = cust.name;
+        }
+    }
+
+    selectedItems.forEach(item => {
         const product = products.find(p => String(p.id) === String(item.productId));
         if (product) product.stock = Math.max(0, (product.stock||0) - item.quantity);
 
@@ -1696,18 +2052,24 @@ function confirmCheckout() {
             profit: revenue - cost,
             type: currentCartType,
             date: new Date().toISOString(),
-            remark: remark
+            remark: remark,
+            customerId: customerId,
+            customerName: customerName
         });
     });
 
-    if (currentCartType === 'wholesale') wholesaleCart = [];
-    else retailCart = [];
+    // 从购物车中移除已结算的商品
+    if (currentCartType === 'wholesale') {
+        wholesaleCart = wholesaleCart.filter(i => !i.selected);
+    } else {
+        retailCart = retailCart.filter(i => !i.selected);
+    }
 
     saveData();
     closeModal('modal-checkout');
     updateFab();
     renderProductTable();
-    showToast('结算成功！', 'success');
+    showToast('结算成功！' + (customerName ? ' 客户: ' + customerName : ''), 'success');
 }
 
 // ============================================
@@ -2018,17 +2380,20 @@ function renderDataPage() {
     document.getElementById('dataSalesCount').textContent = salesRecords.length;
     document.getElementById('dataPurchaseCount').textContent = purchaseOrders.length;
     document.getElementById('dataDebtCount').textContent = debtRecords.filter(d=>!d.paid).length;
+    renderCustomerList();
+    renderSupplierManagement();
 }
 
 function exportData() {
     const data = {
-        version: 'mobile_v2',
+        version: 'mobile_v3',
         exportDate: new Date().toISOString(),
         products: products,
         salesRecords: salesRecords,
         purchaseOrders: purchaseOrders,
         priceHistory: priceHistory,
-        debtRecords: debtRecords
+        debtRecords: debtRecords,
+        customers: customers
     };
 
     const json = JSON.stringify(data, null, 2);
@@ -2060,9 +2425,11 @@ function importData(event) {
                 if (data.purchaseOrders) purchaseOrders = data.purchaseOrders;
                 if (data.priceHistory) priceHistory = data.priceHistory;
                 if (data.debtRecords) debtRecords = data.debtRecords;
+                if (data.customers) customers = data.customers;
                 saveData();
                 renderDataPage();
                 renderProductTable();
+                updateSupplierDatalist();
                 showToast('数据导入成功！', 'success');
             });
         } catch(err) {
@@ -2228,6 +2595,10 @@ function init() {
     try {
         updateSupplierDatalist();
         renderSupplierManagement();
+    } catch(e) {}
+
+    try {
+        initFabDrag();
     } catch(e) {}
 }
 
