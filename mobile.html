@@ -599,6 +599,39 @@
         <div id="supplierListContainer" style="display:flex; flex-direction:column; gap:6px;"></div>
     </div>
     <div style="margin-top:14px;">
+        <h4 style="font-size:14px; margin-bottom:8px;">🖨️ 蓝牙打印</h4>
+        <div style="background:var(--card); border-radius:8px; padding:12px; margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span id="printerStatus" style="font-size:13px; color:#999;">未连接打印机</span>
+                <span id="printerName" style="font-size:13px; font-weight:600; color:#28a745;"></span>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button class="action-btn btn-blue" style="flex:1; padding:10px; font-size:13px;" onclick="connectPrinter()">🔗 连接打印机</button>
+                <button class="action-btn btn-gray" style="flex:1; padding:10px; font-size:13px;" onclick="testPrint()">🧪 测试打印</button>
+            </div>
+            <div style="margin-top:8px;">
+                <label style="font-size:12px; color:#666;">店铺名称</label>
+                <input type="text" id="printShopName" placeholder="输入店铺名称，打印小票时显示" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px; font-size:13px; margin-top:4px;" oninput="savePrintSettings()">
+            </div>
+            <div style="margin-top:6px; display:flex; gap:6px;">
+                <div style="flex:1;">
+                    <label style="font-size:12px; color:#666;">店铺电话</label>
+                    <input type="text" id="printShopPhone" placeholder="电话" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px; font-size:13px; margin-top:4px;" oninput="savePrintSettings()">
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size:12px; color:#666;">纸宽</label>
+                    <select id="printPaperWidth" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px; font-size:13px; margin-top:4px;" onchange="savePrintSettings()">
+                        <option value="58">58mm</option>
+                        <option value="80">80mm</option>
+                    </select>
+                </div>
+            </div>
+            <div style="font-size:11px; color:#999; margin-top:8px; line-height:1.4;">
+                💡 提示：需用手机自带浏览器打开，微信内不支持蓝牙打印
+            </div>
+        </div>
+    </div>
+    <div style="margin-top:14px;">
         <h4 style="font-size:14px; margin-bottom:8px;">🔐 密码管理</h4>
         <div style="display:flex; flex-direction:column; gap:8px;">
             <button class="action-btn btn-purple" style="width:100%; padding:12px; font-size:14px;" onclick="openPasswordModal('owner')">👑 修改老板密码</button>
@@ -1084,6 +1117,434 @@ function deleteCustomer(customerId) {
         renderCustomerList();
         showToast('客户已删除', 'success');
     }
+}
+
+// ============================================
+// 蓝牙打印功能 (ESC/POS 热敏打印机)
+// ============================================
+
+var printerDevice = null;
+var printerCharacteristic = null;
+var printSettings = {
+    shopName: '',
+    shopPhone: '',
+    paperWidth: '58'
+};
+
+// 加载打印设置
+function loadPrintSettings() {
+    try {
+        var saved = localStorage.getItem('printSettings');
+        if (saved) {
+            printSettings = JSON.parse(saved);
+            var nameEl = document.getElementById('printShopName');
+            var phoneEl = document.getElementById('printShopPhone');
+            var widthEl = document.getElementById('printPaperWidth');
+            if (nameEl) nameEl.value = printSettings.shopName || '';
+            if (phoneEl) phoneEl.value = printSettings.shopPhone || '';
+            if (widthEl) widthEl.value = printSettings.paperWidth || '58';
+        }
+    } catch(e) {}
+}
+
+// 保存打印设置
+function savePrintSettings() {
+    var nameEl = document.getElementById('printShopName');
+    var phoneEl = document.getElementById('printShopPhone');
+    var widthEl = document.getElementById('printPaperWidth');
+    if (nameEl) printSettings.shopName = nameEl.value.trim();
+    if (phoneEl) printSettings.shopPhone = phoneEl.value.trim();
+    if (widthEl) printSettings.paperWidth = widthEl.value;
+    try {
+        localStorage.setItem('printSettings', JSON.stringify(printSettings));
+    } catch(e) {}
+}
+
+// 更新打印机状态显示
+function updatePrinterStatus() {
+    var statusEl = document.getElementById('printerStatus');
+    var nameEl = document.getElementById('printerName');
+    if (!statusEl || !nameEl) return;
+    if (printerDevice && printerDevice.gatt && printerDevice.gatt.connected) {
+        statusEl.textContent = '✅ 已连接';
+        statusEl.style.color = '#28a745';
+        nameEl.textContent = printerDevice.name || '打印机';
+    } else {
+        statusEl.textContent = '❌ 未连接';
+        statusEl.style.color = '#999';
+        nameEl.textContent = '';
+    }
+}
+
+// 连接蓝牙打印机
+function connectPrinter() {
+    if (!navigator.bluetooth) {
+        showToast('当前浏览器不支持蓝牙打印，请用手机自带浏览器打开', 'error');
+        return;
+    }
+
+    navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb']
+    }).then(function(device) {
+        printerDevice = device;
+        showToast('正在连接 ' + device.name + '...', 'success');
+        return device.gatt.connect();
+    }).then(function(server) {
+        return server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
+    }).then(function(service) {
+        return service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb');
+    }).then(function(char) {
+        printerCharacteristic = char;
+        updatePrinterStatus();
+        showToast('打印机连接成功！', 'success');
+        
+        // 断开连接时的处理
+        if (printerDevice) {
+            printerDevice.addEventListener('gattserverdisconnected', function() {
+                printerDevice = null;
+                printerCharacteristic = null;
+                updatePrinterStatus();
+                showToast('打印机已断开连接', 'warning');
+            });
+        }
+    }).catch(function(error) {
+        console.error('蓝牙连接失败:', error);
+        showToast('连接失败: ' + error.message, 'error');
+    });
+}
+
+// 向打印机发送数据
+function sendPrintData(data) {
+    if (!printerCharacteristic) {
+        showToast('请先连接打印机', 'error');
+        return Promise.reject('未连接');
+    }
+
+    // 分包发送（每包最大20字节）
+    var chunkSize = 20;
+    var chunks = [];
+    for (var i = 0; i < data.length; i += chunkSize) {
+        chunks.push(data.slice(i, i + chunkSize));
+    }
+
+    var promise = Promise.resolve();
+    chunks.forEach(function(chunk) {
+        promise = promise.then(function() {
+            return printerCharacteristic.writeValue(new Uint8Array(chunk));
+        });
+    });
+    return promise;
+}
+
+// ESC/POS 打印指令生成工具
+var ESC = {
+    init: function() { return [0x1B, 0x40]; }, // 初始化打印机
+    alignLeft: function() { return [0x1B, 0x61, 0x00]; }, // 左对齐
+    alignCenter: function() { return [0x1B, 0x61, 0x01]; }, // 居中
+    alignRight: function() { return [0x1B, 0x61, 0x02]; }, // 右对齐
+    boldOn: function() { return [0x1B, 0x45, 0x01]; }, // 加粗开
+    boldOff: function() { return [0x1B, 0x45, 0x00]; }, // 加粗关
+    doubleSize: function() { return [0x1D, 0x21, 0x11]; }, // 双倍大小
+    normalSize: function() { return [0x1D, 0x21, 0x00]; }, // 正常大小
+    feedLine: function(n) { n = n || 1; return Array(n).fill(0x0A); }, // 走纸
+    cutPaper: function() { return [0x1D, 0x56, 0x01]; }, // 切纸
+    newLine: function() { return [0x0A]; }, // 换行
+    
+    // 文本转GBK编码字节（使用TextEncoder，如果不支持则用简单的ASCII+中文编码）
+    textToBytes: function(text) {
+        // 优先尝试TextEncoder GBK
+        try {
+            var encoder = new TextEncoder('gbk');
+            var result = encoder.encode(text);
+            return Array.from(result);
+        } catch(e) {}
+        
+        // 回退：使用UTF-8编码（部分打印机支持）
+        var utf8 = [];
+        for (var i = 0; i < text.length; i++) {
+            var code = text.charCodeAt(i);
+            if (code < 0x80) {
+                utf8.push(code);
+            } else if (code < 0x800) {
+                utf8.push(0xC0 | (code >> 6));
+                utf8.push(0x80 | (code & 0x3F));
+            } else {
+                utf8.push(0xE0 | (code >> 12));
+                utf8.push(0x80 | ((code >> 6) & 0x3F));
+                utf8.push(0x80 | (code & 0x3F));
+            }
+        }
+        return utf8;
+    }
+};
+
+// 生成一行文本（自动处理中英文宽度对齐）
+function buildLine(left, right, width) {
+    width = width || (printSettings.paperWidth === '80' ? 48 : 32);
+    var leftStr = left || '';
+    var rightStr = right || '';
+    
+    // 计算显示宽度（中文占2，英文占1）
+    function getDisplayWidth(str) {
+        var w = 0;
+        for (var i = 0; i < str.length; i++) {
+            if (str.charCodeAt(i) > 127) w += 2;
+            else w += 1;
+        }
+        return w;
+    }
+    
+    var leftW = getDisplayWidth(leftStr);
+    var rightW = getDisplayWidth(rightStr);
+    var spaceW = width - leftW - rightW;
+    if (spaceW < 1) spaceW = 1;
+    
+    var spaces = '';
+    for (var i = 0; i < spaceW; i++) spaces += ' ';
+    
+    return leftStr + spaces + rightStr;
+}
+
+// 打印测试页
+function testPrint() {
+    if (!printerDevice || !printerCharacteristic) {
+        showToast('请先连接打印机', 'error');
+        return;
+    }
+
+    var data = [];
+    data = data.concat(ESC.init());
+    data = data.concat(ESC.alignCenter());
+    data = data.concat(ESC.boldOn());
+    data = data.concat(ESC.doubleSize());
+    data = data.concat(ESC.textToBytes('测试打印'));
+    data = data.concat(ESC.newLine());
+    data = data.concat(ESC.normalSize());
+    data = data.concat(ESC.boldOff());
+    data = data.concat(ESC.alignLeft());
+    data = data.concat(ESC.newLine());
+    
+    data = data.concat(ESC.textToBytes('------------------------------'));
+    data = data.concat(ESC.newLine());
+    data = data.concat(ESC.textToBytes(buildLine('商品名称', '金额')));
+    data = data.concat(ESC.newLine());
+    data = data.concat(ESC.textToBytes('------------------------------'));
+    data = data.concat(ESC.newLine());
+    data = data.concat(ESC.textToBytes(buildLine('测试商品 x1', '¥10.00')));
+    data = data.concat(ESC.newLine());
+    data = data.concat(ESC.textToBytes(buildLine('示例产品 x2', '¥25.50')));
+    data = data.concat(ESC.newLine());
+    data = data.concat(ESC.textToBytes('------------------------------'));
+    data = data.concat(ESC.newLine());
+    
+    data = data.concat(ESC.alignRight());
+    data = data.concat(ESC.boldOn());
+    data = data.concat(ESC.textToBytes('合计: ¥35.50'));
+    data = data.concat(ESC.newLine());
+    data = data.concat(ESC.boldOff());
+    data = data.concat(ESC.alignLeft());
+    
+    data = data.concat(ESC.newLine());
+    data = data.concat(ESC.alignCenter());
+    data = data.concat(ESC.textToBytes('打印成功！时间:'));
+    data = data.concat(ESC.newLine());
+    var now = new Date();
+    var timeStr = now.getFullYear() + '-' + (now.getMonth()+1) + '-' + now.getDate() + ' ' + now.getHours() + ':' + (now.getMinutes()<10?'0':'') + now.getMinutes();
+    data = data.concat(ESC.textToBytes(timeStr));
+    data = data.concat(ESC.newLine());
+    data = data.concat(ESC.feedLine(3));
+    data = data.concat(ESC.cutPaper());
+
+    showToast('正在打印...', 'success');
+    sendPrintData(data).then(function() {
+        showToast('打印完成', 'success');
+    }).catch(function(err) {
+        showToast('打印失败: ' + err, 'error');
+    });
+}
+
+// 打印销售小票
+function printSalesReceipt(items, totalAmount, customerName, remark) {
+    if (!printerDevice || !printerCharacteristic) {
+        showToast('请先连接打印机', 'error');
+        return;
+    }
+
+    var shopName = printSettings.shopName || '兴达电器制冷配件';
+    var shopPhone = printSettings.shopPhone || '';
+    var now = new Date();
+    var dateStr = now.getFullYear() + '-' + (now.getMonth()+1) + '-' + now.getDate();
+    var timeStr = now.getHours() + ':' + (now.getMinutes()<10?'0':'') + now.getMinutes();
+
+    var data = [];
+    data = data.concat(ESC.init());
+    
+    // 店名
+    data = data.concat(ESC.alignCenter());
+    data = data.concat(ESC.boldOn());
+    data = data.concat(ESC.doubleSize());
+    data = data.concat(ESC.textToBytes(shopName));
+    data = data.concat(ESC.newLine());
+    data = data.concat(ESC.normalSize());
+    data = data.concat(ESC.boldOff());
+    
+    // 电话
+    if (shopPhone) {
+        data = data.concat(ESC.textToBytes('电话: ' + shopPhone));
+        data = data.concat(ESC.newLine());
+    }
+    
+    // 日期时间
+    data = data.concat(ESC.textToBytes(dateStr + ' ' + timeStr));
+    data = data.concat(ESC.newLine());
+    
+    // 客户
+    if (customerName) {
+        data = data.concat(ESC.textToBytes('客户: ' + customerName));
+        data = data.concat(ESC.newLine());
+    }
+    
+    data = data.concat(ESC.alignLeft());
+    data = data.concat(ESC.textToBytes('------------------------------'));
+    data = data.concat(ESC.newLine());
+    
+    // 商品列表
+    data = data.concat(ESC.textToBytes(buildLine('商品', '金额')));
+    data = data.concat(ESC.newLine());
+    data = data.concat(ESC.textToBytes('------------------------------'));
+    data = data.concat(ESC.newLine());
+    
+    items.forEach(function(item) {
+        var subtotal = (item.quantity * item.price).toFixed(2);
+        data = data.concat(ESC.textToBytes(buildLine(item.productName, '¥' + subtotal)));
+        data = data.concat(ESC.newLine());
+        if (item.quantity > 1) {
+            data = data.concat(ESC.textToBytes('  单价 ¥' + item.price.toFixed(2) + ' x' + item.quantity));
+            data = data.concat(ESC.newLine());
+        }
+    });
+    
+    data = data.concat(ESC.textToBytes('------------------------------'));
+    data = data.concat(ESC.newLine());
+    
+    // 合计
+    data = data.concat(ESC.alignRight());
+    data = data.concat(ESC.boldOn());
+    data = data.concat(ESC.textToBytes('合计: ¥' + totalAmount.toFixed(2)));
+    data = data.concat(ESC.newLine());
+    data = data.concat(ESC.boldOff());
+    data = data.concat(ESC.alignLeft());
+    
+    // 备注
+    if (remark) {
+        data = data.concat(ESC.textToBytes('备注: ' + remark));
+        data = data.concat(ESC.newLine());
+    }
+    
+    data = data.concat(ESC.newLine());
+    data = data.concat(ESC.alignCenter());
+    data = data.concat(ESC.textToBytes('谢谢惠顾，欢迎再来！'));
+    data = data.concat(ESC.newLine());
+    data = data.concat(ESC.feedLine(3));
+    data = data.concat(ESC.cutPaper());
+
+    showToast('正在打印小票...', 'success');
+    sendPrintData(data).then(function() {
+        showToast('打印完成', 'success');
+    }).catch(function(err) {
+        showToast('打印失败: ' + err, 'error');
+    });
+}
+
+// 打印采购单
+function printPurchaseOrder(orderId) {
+    if (!printerDevice || !printerCharacteristic) {
+        showToast('请先连接打印机', 'error');
+        return;
+    }
+
+    var order = purchaseOrders.find(function(p) { return p.id === orderId; });
+    if (!order) {
+        showToast('采购单不存在', 'error');
+        return;
+    }
+
+    var shopName = printSettings.shopName || '兴达电器制冷配件';
+    var shopPhone = printSettings.shopPhone || '';
+    var date = new Date(order.date);
+    var dateStr = date.getFullYear() + '-' + (date.getMonth()+1) + '-' + date.getDate();
+    var timeStr = date.getHours() + ':' + (date.getMinutes()<10?'0':'') + date.getMinutes();
+
+    var data = [];
+    data = data.concat(ESC.init());
+    
+    // 标题
+    data = data.concat(ESC.alignCenter());
+    data = data.concat(ESC.boldOn());
+    data = data.concat(ESC.doubleSize());
+    data = data.concat(ESC.textToBytes('采购单'));
+    data = data.concat(ESC.newLine());
+    data = data.concat(ESC.normalSize());
+    data = data.concat(ESC.boldOff());
+    
+    data = data.concat(ESC.textToBytes(shopName));
+    data = data.concat(ESC.newLine());
+    if (shopPhone) {
+        data = data.concat(ESC.textToBytes('电话: ' + shopPhone));
+        data = data.concat(ESC.newLine());
+    }
+    data = data.concat(ESC.textToBytes(dateStr + ' ' + timeStr));
+    data = data.concat(ESC.newLine());
+    
+    data = data.concat(ESC.alignLeft());
+    data = data.concat(ESC.textToBytes('------------------------------'));
+    data = data.concat(ESC.newLine());
+    
+    data = data.concat(ESC.textToBytes(buildLine('商品', '数量/单价')));
+    data = data.concat(ESC.newLine());
+    data = data.concat(ESC.textToBytes('------------------------------'));
+    data = data.concat(ESC.newLine());
+    
+    // 商品名
+    data = data.concat(ESC.boldOn());
+    data = data.concat(ESC.textToBytes(order.productName));
+    data = data.concat(ESC.newLine());
+    data = data.concat(ESC.boldOff());
+    
+    data = data.concat(ESC.textToBytes(buildLine('数量', order.quantity + ' 个')));
+    data = data.concat(ESC.newLine());
+    data = data.concat(ESC.textToBytes(buildLine('单价', '¥' + (order.purchasePrice||0).toFixed(2))));
+    data = data.concat(ESC.newLine());
+    
+    data = data.concat(ESC.textToBytes('------------------------------'));
+    data = data.concat(ESC.newLine());
+    
+    data = data.concat(ESC.alignRight());
+    data = data.concat(ESC.boldOn());
+    data = data.concat(ESC.textToBytes('总金额: ¥' + (order.totalAmount||0).toFixed(2)));
+    data = data.concat(ESC.newLine());
+    data = data.concat(ESC.boldOff());
+    data = data.concat(ESC.alignLeft());
+    
+    if (order.remark) {
+        data = data.concat(ESC.textToBytes('备注: ' + order.remark));
+        data = data.concat(ESC.newLine());
+    }
+    
+    data = data.concat(ESC.newLine());
+    data = data.concat(ESC.alignCenter());
+    data = data.concat(ESC.textToBytes('—— 采购明细 ——'));
+    data = data.concat(ESC.newLine());
+    data = data.concat(ESC.feedLine(3));
+    data = data.concat(ESC.cutPaper());
+
+    showToast('正在打印采购单...', 'success');
+    sendPrintData(data).then(function() {
+        showToast('打印完成', 'success');
+    }).catch(function(err) {
+        showToast('打印失败: ' + err, 'error');
+    });
 }
 
 var passwordEditRole = 'owner';
@@ -1990,6 +2451,10 @@ function checkoutCart() {
         </div>
         <div class="form-group"><label>实收金额</label><input type="number" id="actualAmount" value="${total.toFixed(2)}" step="0.01" style="font-size:18px; font-weight:700; color:#007bff;"></div>
         <div class="form-group"><label>备注</label><input type="text" id="checkoutRemark" placeholder="可选"></div>
+        <label style="display:flex; align-items:center; gap:8px; margin-bottom:12px; font-size:14px; cursor:pointer;">
+            <input type="checkbox" id="printAfterCheckout" checked style="width:18px; height:18px;">
+            <span>🖨️ 结算后打印小票</span>
+        </label>
         <button class="action-btn btn-green" style="width:100%; padding:12px; font-size:14px;" onclick="confirmCheckout()">✅ 确认结算</button>
     `;
     closeModal('modal-cart');
@@ -2070,6 +2535,14 @@ function confirmCheckout() {
     updateFab();
     renderProductTable();
     showToast('结算成功！' + (customerName ? ' 客户: ' + customerName : ''), 'success');
+
+    // 结算后打印小票
+    var printCheckbox = document.getElementById('printAfterCheckout');
+    if (printCheckbox && printCheckbox.checked && printerDevice) {
+        setTimeout(function() {
+            printSalesReceipt(selectedItems, total, customerName, remark);
+        }, 500);
+    }
 }
 
 // ============================================
@@ -2105,6 +2578,7 @@ function renderPurchaseOrders() {
             ${p.remark ? `<div style="font-size:12px; color:var(--text-light); margin-top:3px;">备注: ${escapeHtml(p.remark)}</div>` : ''}
             <div class="r-bottom">
                 <span class="r-amount" style="color:#fd7e14;">¥${(p.totalAmount||0).toFixed(2)}</span>
+                <button class="action-btn btn-blue" style="padding:4px 10px; font-size:12px;" onclick="printPurchaseOrder('${p.id}')">🖨️ 打印</button>
             </div>
         </div>
     `).join('');
@@ -2563,6 +3037,10 @@ function init() {
     } catch(e) {
         console.error('数据加载失败:', e);
     }
+
+    try {
+        loadPrintSettings();
+    } catch(e) {}
 
     try {
         var now = new Date();
