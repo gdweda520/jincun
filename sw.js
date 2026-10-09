@@ -1,4 +1,4 @@
-var CACHE_NAME = 'jincun-mobile-v4';
+var CACHE_NAME = 'jincun-mobile-v5';
 
 self.addEventListener('install', function(e) {
     self.skipWaiting();
