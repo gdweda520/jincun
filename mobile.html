@@ -2653,6 +2653,7 @@ function openPurchaseModal() {
             <div class="form-group"><label>进货数量 *</label><input type="number" id="purchaseQty" value="1" min="1"></div>
             <div class="form-group"><label>进货单价 *</label><input type="number" id="purchasePriceInput" step="0.01" value="0"></div>
         </div>
+        <div class="form-group"><label>售价（可选修改）</label><input type="number" id="purchaseSalePriceInput" step="0.01" value="0" placeholder="修改后商品售价将更新"></div>
         <div class="form-group"><label>备注</label><input type="text" id="purchaseRemark" placeholder="可选"></div>
         <button class="action-btn btn-orange" style="width:100%; padding:12px; font-size:14px;" onclick="confirmPurchase()">确认进货</button>
     `;
@@ -2689,6 +2690,7 @@ function selectPurchaseProduct(id) {
     document.getElementById('purchaseSelectedName').textContent = '✅ 已选: ' + product.name + ' (库存:' + (product.stock||0) + ')';
     document.getElementById('purchaseProductList').innerHTML = '';
     document.getElementById('purchasePriceInput').value = (product.purchasePrice || 0).toFixed(2);
+    document.getElementById('purchaseSalePriceInput').value = (product.price || 0).toFixed(2);
 }
 
 function updatePurchasePrice() {
@@ -2706,12 +2708,14 @@ function confirmPurchase() {
 
     const qty = parseInt(document.getElementById('purchaseQty').value) || 0;
     const price = parseFloat(document.getElementById('purchasePriceInput').value) || 0;
+    const salePrice = parseFloat(document.getElementById('purchaseSalePriceInput').value) || 0;
     const remark = document.getElementById('purchaseRemark').value.trim();
 
     if (qty < 1) { showToast('数量不能小于1', 'error'); return; }
 
     product.stock = (product.stock || 0) + qty;
     if (price > 0) product.purchasePrice = price;
+    if (salePrice > 0) product.price = salePrice;
 
     purchaseOrders.push({
         id: generateId(),
