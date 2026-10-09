@@ -500,7 +500,7 @@
         <input type="text" id="purchaseSearchBox" placeholder="搜索进货记录..." oninput="searchPurchaseOrders()" style="font-size:14px;">
     </div>
     <div class="action-row">
-        <button class="action-btn btn-orange" onclick="openPurchaseModal()">📝 创建采购单</button>
+        <button class="action-btn btn-orange" onclick="openPurchaseCartModal()">🛒 采购车(<span id="purchaseCartCount">0</span>)</button>
     </div>
     <div id="purchaseList"></div>
 </div>
@@ -726,7 +726,7 @@
 <div class="modal-overlay" id="modal-purchase">
     <div class="modal-sheet">
         <div class="modal-header">
-            <h3>创建采购单</h3>
+            <h3>🛒 采购车</h3>
             <button class="close-btn" onclick="closeModal('modal-purchase')">&times;</button>
         </div>
         <div class="modal-body" id="purchaseModalBody"></div>
@@ -1637,6 +1637,7 @@ let purchaseOrders = [];
 let priceHistory = [];
 let wholesaleCart = [];
 let retailCart = [];
+let purchaseCart = [];
 let debtRecords = [];
 let customers = [];
 
@@ -2662,103 +2663,230 @@ function deletePurchaseOrder(orderId) {
     });
 }
 
-function openPurchaseModal() {
+function openPurchaseCartModal() {
     if (products.length === 0) {
         showToast('请先添加商品', 'warning');
         return;
     }
-
-    document.getElementById('purchaseModalBody').innerHTML = `
-        <div class="form-group">
-            <label>选择商品 *</label>
-            <input type="text" id="purchaseSearchInput" placeholder="输入商品名称搜索..." style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:14px; box-sizing:border-box;" oninput="filterPurchaseProducts()">
-            <div id="purchaseProductList" style="max-height:200px; overflow-y:auto; border:1px solid #ddd; border-radius:8px; margin-top:4px;"></div>
-            <input type="hidden" id="purchaseProductId">
-            <div id="purchaseSelectedName" style="margin-top:6px; font-size:13px; color:#667eea; font-weight:600;"></div>
-        </div>
-        <div class="form-row">
-            <div class="form-group"><label>进货数量 *</label><input type="number" id="purchaseQty" value="1" min="1"></div>
-            <div class="form-group"><label>进货单价 *</label><input type="number" id="purchasePriceInput" step="0.01" value="0"></div>
-        </div>
-        <div class="form-group"><label>售价（可选修改）</label><input type="number" id="purchaseSalePriceInput" step="0.01" value="0" placeholder="修改后商品售价将更新"></div>
-        <div class="form-group"><label>备注</label><input type="text" id="purchaseRemark" placeholder="可选"></div>
-        <button class="action-btn btn-orange" style="width:100%; padding:12px; font-size:14px;" onclick="confirmPurchase()">确认进货</button>
-    `;
-
-    filterPurchaseProducts();
+    renderPurchaseCart();
     document.getElementById('modal-purchase').classList.add('show');
+}
+
+function updatePurchaseCartCount() {
+    var el = document.getElementById('purchaseCartCount');
+    if (el) el.textContent = purchaseCart.length;
+}
+
+function renderPurchaseCart() {
+    var body = document.getElementById('purchaseModalBody');
+
+    var html = '';
+
+    // 添加商品搜索区
+    html += '<div style="margin-bottom:14px;">';
+    html += '<input type="text" id="purchaseSearchInput" placeholder="搜索商品名称添加到采购车..." style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:14px; box-sizing:border-box;" oninput="filterPurchaseProducts()">';
+    html += '<div id="purchaseProductList" style="max-height:150px; overflow-y:auto; border:1px solid #ddd; border-radius:8px; margin-top:4px;"></div>';
+    html += '</div>';
+
+    // 采购车列表
+    if (purchaseCart.length === 0) {
+        html += '<div class="empty"><div class="icon">🛒</div><div>采购车为空，搜索商品添加进来</div></div>';
+    } else {
+        var totalCost = 0;
+        var totalRevenue = 0;
+
+        purchaseCart.forEach(function(item, index) {
+            var cost = item.quantity * item.purchasePrice;
+            var revenue = item.quantity * item.salePrice;
+            var profit = revenue - cost;
+            totalCost += cost;
+            totalRevenue += revenue;
+
+            html += '<div class="cart-item" style="display:flex; align-items:center; gap:8px; padding:10px; border:1px solid #eee; border-radius:8px; margin-bottom:8px;">';
+            html += '<div style="flex:1;">';
+            html += '<div style="font-weight:600; font-size:14px; margin-bottom:4px;">' + escapeHtml(item.productName) + '</div>';
+            html += '<div style="display:flex; gap:6px; margin-bottom:4px;">';
+            html += '<div style="flex:1;"><label style="font-size:11px; color:#999;">进货价</label><input type="number" value="' + item.purchasePrice.toFixed(2) + '" step="0.01" style="width:100%; padding:4px 6px; border:1px solid #ddd; border-radius:4px; font-size:13px;" oninput="updatePurchaseCartItem(' + index + ", 'purchasePrice', " + 'this.value)"></div>';
+            html += '<div style="flex:1;"><label style="font-size:11px; color:#999;">批发价</label><input type="number" value="' + item.salePrice.toFixed(2) + '" step="0.01" style="width:100%; padding:4px 6px; border:1px solid #ddd; border-radius:4px; font-size:13px;" oninput="updatePurchaseCartItem(' + index + ", 'salePrice', " + 'this.value)"></div>';
+            html += '</div>';
+            html += '<div style="display:flex; gap:6px; align-items:center;">';
+            html += '<div style="display:flex; align-items:center; gap:4px;">';
+            html += '<button onclick="changePurchaseCartQty(' + index + ", -1)" + '" style="width:26px; height:26px; border:1px solid #ddd; border-radius:4px; background:#fff; cursor:pointer; font-size:14px;">-</button>';
+            html += '<span style="font-size:14px; font-weight:600; min-width:20px; text-align:center;">' + item.quantity + '</span>';
+            html += '<button onclick="changePurchaseCartQty(' + index + ", 1)" + '" style="width:26px; height:26px; border:1px solid #ddd; border-radius:4px; background:#fff; cursor:pointer; font-size:14px;">+</button>';
+            html += '</div>';
+            html += '<span style="font-size:12px; color:#999; margin-left:auto;">成本¥' + cost.toFixed(2) + ' 收入¥' + revenue.toFixed(2) + ' <span style="color:' + (profit >= 0 ? '#28a745' : '#dc3545') + '; font-weight:600;">利¥' + profit.toFixed(2) + '</span></span>';
+            html += '</div>';
+            html += '</div>';
+            html += '<button onclick="removePurchaseCartItem(' + index + ')" style="width:26px; height:26px; border:none; border-radius:4px; background:#ffebee; color:#dc3545; cursor:pointer; font-size:14px; flex-shrink:0;">✕</button>';
+            html += '</div>';
+        });
+
+        var totalProfit = totalRevenue - totalCost;
+        html += '<div style="background:var(--light); border-radius:8px; padding:10px; margin-top:10px;">';
+        html += '<div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>总成本</span><span style="color:#fd7e14; font-weight:600;">¥' + totalCost.toFixed(2) + '</span></div>';
+        html += '<div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>总收入</span><span style="color:#007bff; font-weight:600;">¥' + totalRevenue.toFixed(2) + '</span></div>';
+        html += '<div style="display:flex; justify-content:space-between;"><span>预计利润</span><span style="font-weight:700; color:' + (totalProfit >= 0 ? '#28a745' : '#dc3545') + '; font-size:16px;">¥' + totalProfit.toFixed(2) + '</span></div>';
+        html += '</div>';
+
+        html += '<div class="form-group" style="margin-top:10px;"><label>备注</label><input type="text" id="purchaseRemark" placeholder="可选" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px; font-size:14px; box-sizing:border-box;"></div>';
+        html += '<div style="display:flex; gap:8px; margin-top:10px;">';
+        html += '<button class="action-btn btn-red" style="flex:1;" onclick="clearPurchaseCart()">清空</button>';
+        html += '<button class="action-btn btn-green" style="flex:2;" onclick="submitPurchaseCart()">✅ 提交采购单</button>';
+        html += '</div>';
+    }
+
+    body.innerHTML = html;
+
+    if (purchaseCart.length === 0) {
+        filterPurchaseProducts();
+    }
 }
 
 function filterPurchaseProducts() {
     var keyword = (document.getElementById('purchaseSearchInput').value || '').toLowerCase();
     var list = document.getElementById('purchaseProductList');
+    if (!list) return;
+
+    // 已在采购车里的商品ID
+    var inCartIds = purchaseCart.map(function(i) { return String(i.productId); });
     var filtered = products.filter(function(p) {
-        return p.name.toLowerCase().includes(keyword);
+        return p.name.toLowerCase().includes(keyword) && inCartIds.indexOf(String(p.id)) === -1;
     });
 
     if (filtered.length === 0) {
-        list.innerHTML = '<div style="padding:10px; text-align:center; color:#999; font-size:13px;">未找到商品</div>';
+        list.innerHTML = '<div style="padding:10px; text-align:center; color:#999; font-size:13px;">未找到可添加的商品</div>';
         return;
     }
 
     list.innerHTML = filtered.map(function(p) {
-        return '<div onclick="selectPurchaseProduct(\'' + p.id + '\')" style="padding:10px 12px; border-bottom:1px solid #f0f0f0; cursor:pointer; font-size:14px;" onmouseover="this.style.background=\'#f5f5f5\'" onmouseout="this.style.background=\'#fff\'">' +
+        return '<div onclick="addToPurchaseCart(\'' + p.id + '\')" style="padding:10px 12px; border-bottom:1px solid #f0f0f0; cursor:pointer; font-size:14px;">' +
             '<span style="font-weight:600;">' + escapeHtml(p.name) + '</span>' +
-            '<span style="float:right; font-size:12px; color:#999;">库存:' + (p.stock||0) + '</span>' +
+            '<span style="float:right; font-size:12px; color:#999;">库存:' + (p.stock||0) + ' 进货¥' + (p.purchasePrice||0).toFixed(2) + ' 售价¥' + (p.price||0).toFixed(2) + '</span>' +
         '</div>';
     }).join('');
 }
 
-function selectPurchaseProduct(id) {
-    var product = products.find(function(p) { return String(p.id) === String(id); });
+function addToPurchaseCart(productId) {
+    var product = products.find(function(p) { return String(p.id) === String(productId); });
     if (!product) return;
-    document.getElementById('purchaseProductId').value = id;
-    document.getElementById('purchaseSearchInput').value = product.name;
-    document.getElementById('purchaseSelectedName').textContent = '✅ 已选: ' + product.name + ' (库存:' + (product.stock||0) + ')';
-    document.getElementById('purchaseProductList').innerHTML = '';
-    document.getElementById('purchasePriceInput').value = (product.purchasePrice || 0).toFixed(2);
-    document.getElementById('purchaseSalePriceInput').value = (product.price || 0).toFixed(2);
-}
 
-function updatePurchasePrice() {
-    const productId = document.getElementById('purchaseProductId').value;
-    const product = products.find(p => String(p.id) === String(productId));
-    if (product) {
-        document.getElementById('purchasePriceInput').value = (product.purchasePrice || 0).toFixed(2);
-    }
-}
-
-function confirmPurchase() {
-    const productId = document.getElementById('purchaseProductId').value;
-    const product = products.find(p => String(p.id) === String(productId));
-    if (!product) { showToast('请选择商品', 'error'); return; }
-
-    const qty = parseInt(document.getElementById('purchaseQty').value) || 0;
-    const price = parseFloat(document.getElementById('purchasePriceInput').value) || 0;
-    const salePrice = parseFloat(document.getElementById('purchaseSalePriceInput').value) || 0;
-    const remark = document.getElementById('purchaseRemark').value.trim();
-
-    if (qty < 1) { showToast('数量不能小于1', 'error'); return; }
-
-    product.stock = (product.stock || 0) + qty;
-    if (price > 0) product.purchasePrice = price;
-    if (salePrice > 0) product.price = salePrice;
-
-    purchaseOrders.push({
-        id: generateId(),
+    purchaseCart.push({
         productId: product.id,
         productName: product.name,
-        quantity: qty,
-        purchasePrice: price,
-        totalAmount: qty * price,
-        date: new Date().toISOString(),
-        remark: remark
+        quantity: 1,
+        purchasePrice: product.purchasePrice || 0,
+        salePrice: product.price || 0
+    });
+
+    document.getElementById('purchaseSearchInput').value = '';
+    renderPurchaseCart();
+    updatePurchaseCartCount();
+}
+
+function updatePurchaseCartItem(index, field, value) {
+    if (!purchaseCart[index]) return;
+    var num = parseFloat(value) || 0;
+    if (num < 0) num = 0;
+    purchaseCart[index][field] = num;
+    // 只更新显示的汇总，不重新渲染整个列表（避免输入框失焦）
+    renderPurchaseCartSummary();
+}
+
+function renderPurchaseCartSummary() {
+    // 重新渲染但保持搜索框和输入焦点
+    renderPurchaseCart();
+}
+
+function changePurchaseCartQty(index, delta) {
+    if (!purchaseCart[index]) return;
+    purchaseCart[index].quantity += delta;
+    if (purchaseCart[index].quantity < 1) purchaseCart[index].quantity = 1;
+    renderPurchaseCart();
+}
+
+function removePurchaseCart(index) {
+    purchaseCart.splice(index, 1);
+    renderPurchaseCart();
+    updatePurchaseCartCount();
+}
+
+function clearPurchaseCart() {
+    if (purchaseCart.length === 0) return;
+    customConfirm('确定清空采购车吗？', function(ok) {
+        if (!ok) return;
+        purchaseCart = [];
+        renderPurchaseCart();
+        updatePurchaseCartCount();
+        showToast('采购车已清空', 'success');
+    });
+}
+
+function submitPurchaseCart() {
+    if (purchaseCart.length === 0) { showToast('采购车为空', 'error'); return; }
+
+    var remark = '';
+    var remarkEl = document.getElementById('purchaseRemark');
+    if (remarkEl) remark = remarkEl.value.trim();
+
+    var now = new Date().toISOString();
+    var count = 0;
+
+    purchaseCart.forEach(function(item) {
+        var product = products.find(function(p) { return String(p.id) === String(item.productId); });
+        if (product) {
+            product.stock = (product.stock || 0) + item.quantity;
+            if (item.purchasePrice > 0) product.purchasePrice = item.purchasePrice;
+            if (item.salePrice > 0) product.price = item.salePrice;
+        }
+
+        purchaseOrders.push({
+            id: generateId(),
+            productId: item.productId,
+            productName: item.productName,
+            quantity: item.quantity,
+            purchasePrice: item.purchasePrice,
+            salePrice: item.salePrice,
+            totalAmount: item.quantity * item.purchasePrice,
+            totalRevenue: item.quantity * item.salePrice,
+            profit: item.quantity * (item.salePrice - item.purchasePrice),
+            date: now,
+            remark: remark
+        });
+        count++;
     });
 
     saveData();
+    purchaseCart = [];
+    updatePurchaseCartCount();
     closeModal('modal-purchase');
     renderPurchaseOrders();
-    showToast('进货成功！', 'success');
+    renderProductTable();
+    showToast('采购单已提交！共' + count + '种商品', 'success');
+}
+
+function editPurchaseOrderPrice(orderId) {
+    var order = purchaseOrders.find(function(p) { return String(p.id) === String(orderId); });
+    if (!order) return;
+
+    customPrompt('修改进货单价\n' + order.productName + ' x' + order.quantity, (order.purchasePrice||0).toFixed(2), function(newPrice) {
+        if (!newPrice && newPrice !== 0) return;
+        var price = parseFloat(newPrice);
+        if (isNaN(price) || price < 0) { showToast('请输入有效价格', 'error'); return; }
+
+        order.purchasePrice = price;
+        order.totalAmount = order.quantity * price;
+
+        var product = products.find(function(p) { return String(p.id) === String(order.productId); });
+        if (product) {
+            product.purchasePrice = price;
+        }
+
+        saveData();
+        renderPurchaseOrders();
+        renderProductTable();
+        showToast('进货价已更新为 ¥' + price.toFixed(2), 'success');
+    });
 }
 
 // ============================================
