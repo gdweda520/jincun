@@ -2603,11 +2603,38 @@ function renderPurchaseOrders() {
             ${p.remark ? `<div style="font-size:12px; color:var(--text-light); margin-top:3px;">备注: ${escapeHtml(p.remark)}</div>` : ''}
             <div class="r-bottom">
                 <span class="r-amount" style="color:#fd7e14;">¥${(p.totalAmount||0).toFixed(2)}</span>
+                <button class="action-btn btn-yellow" style="padding:4px 10px; font-size:12px;" onclick="editPurchaseOrderPrice('${p.id}')">✏️ 改价</button>
                 <button class="action-btn btn-blue" style="padding:4px 10px; font-size:12px;" onclick="printPurchaseOrder('${p.id}')">🖨️ 打印</button>
                 <button class="action-btn btn-red" style="padding:4px 10px; font-size:12px;" onclick="deletePurchaseOrder('${p.id}')">🗑️ 删除</button>
             </div>
         </div>
     `).join('');
+}
+
+function editPurchaseOrderPrice(orderId) {
+    var order = purchaseOrders.find(function(p) { return String(p.id) === String(orderId); });
+    if (!order) return;
+
+    customPrompt('修改进货单价\n' + order.productName + ' x' + order.quantity, (order.purchasePrice||0).toFixed(2), function(newPrice) {
+        if (!newPrice && newPrice !== 0) return;
+        var price = parseFloat(newPrice);
+        if (isNaN(price) || price < 0) { showToast('请输入有效价格', 'error'); return; }
+
+        var oldPrice = order.purchasePrice || 0;
+        order.purchasePrice = price;
+        order.totalAmount = order.quantity * price;
+
+        // 同步更新商品进货价
+        var product = products.find(function(p) { return String(p.id) === String(order.productId); });
+        if (product) {
+            product.purchasePrice = price;
+        }
+
+        saveData();
+        renderPurchaseOrders();
+        renderProductTable();
+        showToast('进货价已更新为 ¥' + price.toFixed(2), 'success');
+    });
 }
 
 function deletePurchaseOrder(orderId) {
