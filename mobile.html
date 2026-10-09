@@ -2604,9 +2604,35 @@ function renderPurchaseOrders() {
             <div class="r-bottom">
                 <span class="r-amount" style="color:#fd7e14;">¥${(p.totalAmount||0).toFixed(2)}</span>
                 <button class="action-btn btn-blue" style="padding:4px 10px; font-size:12px;" onclick="printPurchaseOrder('${p.id}')">🖨️ 打印</button>
+                <button class="action-btn btn-red" style="padding:4px 10px; font-size:12px;" onclick="deletePurchaseOrder('${p.id}')">🗑️ 删除</button>
             </div>
         </div>
     `).join('');
+}
+
+function deletePurchaseOrder(orderId) {
+    var order = purchaseOrders.find(function(p) { return p.id === orderId; });
+    if (!order) return;
+
+    customConfirm('确定删除这条采购记录吗？\n' + order.productName + ' x' + order.quantity + ' ¥' + (order.totalAmount||0).toFixed(2), function(ok) {
+        if (!ok) return;
+
+        // 恢复库存（减少）
+        var product = products.find(function(p) { return String(p.id) === String(order.productId); });
+        if (product) {
+            product.stock = (product.stock || 0) - order.quantity;
+            if (product.stock < 0) product.stock = 0;
+        }
+
+        // 从采购记录中删除
+        purchaseOrders = purchaseOrders.filter(function(p) { return p.id !== orderId; });
+        saveData();
+
+        // 刷新
+        renderPurchaseOrders();
+        renderProductTable();
+        showToast('采购记录已删除，库存已调整', 'success');
+    });
 }
 
 function openPurchaseModal() {
@@ -2715,10 +2741,36 @@ function renderProfit() {
                 <div class="r-bottom">
                     <span class="r-amount">¥${(s.revenue||0).toFixed(2)}</span>
                     ${profitCol}
+                    <button class="action-btn btn-red" style="padding:4px 10px; font-size:12px;" onclick="deleteSaleRecord('${s.id}')">🗑️ 删除</button>
                 </div>
             </div>
         `;
     }).join('');
+}
+
+function deleteSaleRecord(recordId) {
+    var record = salesRecords.find(function(r) { return r.id === recordId; });
+    if (!record) return;
+
+    customConfirm('确定删除这条销售记录吗？\n' + record.productName + ' x' + record.quantity + ' ¥' + (record.revenue||0).toFixed(2), function(ok) {
+        if (!ok) return;
+
+        // 恢复库存
+        var product = products.find(function(p) { return String(p.id) === String(record.productId); });
+        if (product) {
+            product.stock = (product.stock || 0) + record.quantity;
+        }
+
+        // 从记录中删除
+        salesRecords = salesRecords.filter(function(r) { return r.id !== recordId; });
+        saveData();
+
+        // 刷新所有相关页面
+        renderProfit();
+        renderProductTable();
+        if (currentRankingType) renderRanking(currentRankingType);
+        showToast('销售记录已删除，库存已恢复', 'success');
+    });
 }
 
 // ============================================
