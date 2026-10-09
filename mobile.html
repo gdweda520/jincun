@@ -2611,7 +2611,7 @@ function renderPurchaseOrders() {
 }
 
 function deletePurchaseOrder(orderId) {
-    var order = purchaseOrders.find(function(p) { return p.id === orderId; });
+    var order = purchaseOrders.find(function(p) { return String(p.id) === String(orderId); });
     if (!order) return;
 
     customConfirm('确定删除这条采购记录吗？\n' + order.productName + ' x' + order.quantity + ' ¥' + (order.totalAmount||0).toFixed(2), function(ok) {
@@ -2625,7 +2625,7 @@ function deletePurchaseOrder(orderId) {
         }
 
         // 从采购记录中删除
-        purchaseOrders = purchaseOrders.filter(function(p) { return p.id !== orderId; });
+        purchaseOrders = purchaseOrders.filter(function(p) { return String(p.id) !== String(orderId); });
         saveData();
 
         // 刷新
@@ -2749,7 +2749,7 @@ function renderProfit() {
 }
 
 function deleteSaleRecord(recordId) {
-    var record = salesRecords.find(function(r) { return r.id === recordId; });
+    var record = salesRecords.find(function(r) { return String(r.id) === String(recordId); });
     if (!record) return;
 
     customConfirm('确定删除这条销售记录吗？\n' + record.productName + ' x' + record.quantity + ' ¥' + (record.revenue||0).toFixed(2), function(ok) {
@@ -2762,7 +2762,7 @@ function deleteSaleRecord(recordId) {
         }
 
         // 从记录中删除
-        salesRecords = salesRecords.filter(function(r) { return r.id !== recordId; });
+        salesRecords = salesRecords.filter(function(r) { return String(r.id) !== String(recordId); });
         saveData();
 
         // 刷新所有相关页面
