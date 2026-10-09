@@ -2641,12 +2641,13 @@ function openPurchaseModal() {
         return;
     }
 
-    let productOptions = products.map(p => `<option value="${p.id}">${escapeHtml(p.name)} (库存:${p.stock||0})</option>`).join('');
-
     document.getElementById('purchaseModalBody').innerHTML = `
         <div class="form-group">
             <label>选择商品 *</label>
-            <select id="purchaseProductId" onchange="updatePurchasePrice()">${productOptions}</select>
+            <input type="text" id="purchaseSearchInput" placeholder="输入商品名称搜索..." style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:14px; box-sizing:border-box;" oninput="filterPurchaseProducts()">
+            <div id="purchaseProductList" style="max-height:200px; overflow-y:auto; border:1px solid #ddd; border-radius:8px; margin-top:4px;"></div>
+            <input type="hidden" id="purchaseProductId">
+            <div id="purchaseSelectedName" style="margin-top:6px; font-size:13px; color:#667eea; font-weight:600;"></div>
         </div>
         <div class="form-row">
             <div class="form-group"><label>进货数量 *</label><input type="number" id="purchaseQty" value="1" min="1"></div>
@@ -2656,8 +2657,38 @@ function openPurchaseModal() {
         <button class="action-btn btn-orange" style="width:100%; padding:12px; font-size:14px;" onclick="confirmPurchase()">确认进货</button>
     `;
 
-    updatePurchasePrice();
+    filterPurchaseProducts();
     document.getElementById('modal-purchase').classList.add('show');
+}
+
+function filterPurchaseProducts() {
+    var keyword = (document.getElementById('purchaseSearchInput').value || '').toLowerCase();
+    var list = document.getElementById('purchaseProductList');
+    var filtered = products.filter(function(p) {
+        return p.name.toLowerCase().includes(keyword);
+    });
+
+    if (filtered.length === 0) {
+        list.innerHTML = '<div style="padding:10px; text-align:center; color:#999; font-size:13px;">未找到商品</div>';
+        return;
+    }
+
+    list.innerHTML = filtered.map(function(p) {
+        return '<div onclick="selectPurchaseProduct(\'' + p.id + '\')" style="padding:10px 12px; border-bottom:1px solid #f0f0f0; cursor:pointer; font-size:14px;" onmouseover="this.style.background=\'#f5f5f5\'" onmouseout="this.style.background=\'#fff\'">' +
+            '<span style="font-weight:600;">' + escapeHtml(p.name) + '</span>' +
+            '<span style="float:right; font-size:12px; color:#999;">库存:' + (p.stock||0) + '</span>' +
+        '</div>';
+    }).join('');
+}
+
+function selectPurchaseProduct(id) {
+    var product = products.find(function(p) { return String(p.id) === String(id); });
+    if (!product) return;
+    document.getElementById('purchaseProductId').value = id;
+    document.getElementById('purchaseSearchInput').value = product.name;
+    document.getElementById('purchaseSelectedName').textContent = '✅ 已选: ' + product.name + ' (库存:' + (product.stock||0) + ')';
+    document.getElementById('purchaseProductList').innerHTML = '';
+    document.getElementById('purchasePriceInput').value = (product.purchasePrice || 0).toFixed(2);
 }
 
 function updatePurchasePrice() {
