@@ -850,7 +850,6 @@ function saveSupplierList(list) {
 
 function updateSupplierDatalist() {
     var list = getSupplierList();
-    var products = getProducts();
     products.forEach(function(p){ if (p.supplier) list.push(p.supplier); });
     list = Array.from(new Set(list)).sort();
     var dl = document.getElementById('supplierList');
@@ -907,9 +906,8 @@ function editSupplierName(index) {
         if (list.indexOf(newName) > -1) { showToast('该厂家已存在', 'error'); return; }
         list[index] = newName;
         saveSupplierList(list);
-        var products = getProducts();
         products.forEach(function(p) { if (p.supplier === oldName) p.supplier = newName; });
-        saveProducts(products);
+        saveData();
         renderSupplierManagement();
         updateSupplierDatalist();
         if (typeof renderProductTable === 'function') renderProductTable();
@@ -920,7 +918,6 @@ function editSupplierName(index) {
 function deleteSupplier(index) {
     var list = getSupplierList();
     var name = list[index];
-    var products = getProducts();
     var count = products.filter(function(p){ return p.supplier === name; }).length;
     if (count > 0) {
         showToast('该厂家有' + count + '个商品在使用，无法删除', 'error');
