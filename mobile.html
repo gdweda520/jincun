@@ -861,7 +861,6 @@ function renderSupplierManagement() {
     var container = document.getElementById('supplierListContainer');
     if (!container) return;
     var list = getSupplierList();
-    var products = getProducts();
     var usedSuppliers = new Set(products.map(function(p){ return p.supplier || ''; }).filter(Boolean));
 
     if (list.length === 0) {
@@ -2017,6 +2016,7 @@ function renderProductTable() {
                 <button class="action-btn btn-green btn-sm" onclick="addToCart('retail', '${p.id}')">零</button>
                 <button class="action-btn btn-yellow btn-sm" onclick="openStockModal('${p.id}')">库</button>
                 <button class="action-btn btn-purple btn-sm" onclick="openEditProductModal('${p.id}')">编</button>
+                <button class="action-btn btn-red btn-sm" onclick="deleteProduct('${p.id}')">删</button>
             </td>
         </tr>`;
     }).join('');
@@ -2198,6 +2198,26 @@ function saveEditProduct(id) {
     updateSupplierDatalist();
     renderSupplierManagement();
     showToast('商品已更新', 'success');
+}
+
+function deleteProduct(id) {
+    const product = products.find(p => String(p.id) === String(id));
+    if (!product) return;
+
+    customConfirm('确定删除商品「' + product.name + '」吗？\n删除后无法恢复，相关库存记录将保留', function(ok) {
+        if (!ok) return;
+
+        const index = products.findIndex(p => String(p.id) === String(id));
+        if (index > -1) {
+            products.splice(index, 1);
+        }
+
+        saveData();
+        renderProductTable();
+        updateSupplierDatalist();
+        renderSupplierManagement();
+        showToast('商品已删除', 'success');
+    });
 }
 
 function saveProduct() {
