@@ -2001,7 +2001,7 @@ function renderProductTable() {
 
         return `<tr>
             <td>${num}</td>
-            <td class="name">${escapeHtml(p.name)}</td>
+            <td class="name" style="cursor:pointer;" onclick="viewProductImage('${p.id}')">${p.image ? '🖼️' : ''}${escapeHtml(p.name)}</td>
             <td>${escapeHtml(p.category||'-')}</td>
             <td style="font-size:11px;">${escapeHtml(p.supplier||'-')}</td>
             <td class="${stockClass}">${p.stock||0}${escapeHtml(p.unit||'')}</td>
@@ -2110,6 +2110,12 @@ function openAddProductModal() {
             <input type="text" id="pSupplier" placeholder="输入或选择厂家名称" list="supplierList">
             <datalist id="supplierList"></datalist>
         </div>
+        <div class="form-group">
+            <label>商品图片</label>
+            <div id="pImagePreview" style="margin-bottom:6px;"><span style="color:#999; font-size:12px;">暂无图片</span></div>
+            <button type="button" class="action-btn btn-blue btn-sm" style="width:100%;" onclick="document.getElementById('pImageInput').click()">📷 上传图片</button>
+            <input type="file" id="pImageInput" accept="image/*" style="display:none;" onchange="handleProductImageSelect(this)">
+        </div>
         <div class="form-row">
             <div class="form-group"><label>进货价</label><input type="number" id="pPurchasePrice" step="0.01" value="0"></div>
             <div class="form-group"><label>批发价</label><input type="number" id="pWholesalePrice" step="0.01" value="0"></div>
@@ -2126,6 +2132,7 @@ function openAddProductModal() {
     `;
     document.getElementById('modal-product').classList.add('show');
     updateSupplierDatalist();
+    window._tempProductImage = '';
 }
 
 function openProductModal() {
@@ -2152,6 +2159,16 @@ function openEditProductModal(id) {
             <input type="text" id="pSupplier" value="${escapeHtml(product.supplier||'')}" list="supplierList">
             <datalist id="supplierList"></datalist>
         </div>
+        <div class="form-group">
+            <label>商品图片</label>
+            <div id="pImagePreview" style="margin-bottom:6px;">${product.image ? '<img src="' + product.image + '" style="max-width:100%; max-height:120px; border-radius:8px; border:1px solid #ddd;">' : '<span style="color:#999; font-size:12px;">暂无图片</span>'}</div>
+            <div style="display:flex; gap:6px;">
+                <button type="button" class="action-btn btn-blue btn-sm" style="flex:1;" onclick="document.getElementById('pImageInput').click()">📷 上传图片</button>
+                ${product.image ? '<button type="button" class="action-btn btn-red btn-sm" onclick="removeProductImage()">🗑️ 删除图片</button>' : ''}
+            </div>
+            <input type="file" id="pImageInput" accept="image/*" style="display:none;" onchange="handleProductImageSelect(this)">
+            <input type="hidden" id="pImageData" value="">
+        </div>
         <div class="form-row">
             <div class="form-group"><label>进货价</label><input type="number" id="pPurchasePrice" step="0.01" value="${product.purchasePrice||0}"></div>
             <div class="form-group"><label>批发价</label><input type="number" id="pWholesalePrice" step="0.01" value="${product.wholesalePrice||0}"></div>
@@ -2168,6 +2185,60 @@ function openEditProductModal(id) {
     `;
     document.getElementById('modal-product').classList.add('show');
     updateSupplierDatalist();
+    // 暂存当前图片数据（编辑用）
+    window._tempProductImage = product.image || '';
+}
+
+// 选择图片后压缩并预览
+function handleProductImageSelect(input) {
+    var file = input.files && input.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var img = new Image();
+        img.onload = function() {
+            var canvas = document.createElement('canvas');
+            var maxSize = 400;
+            var w = img.width, h = img.height;
+            if (w > h) { if (w > maxSize) { h = h * maxSize / w; w = maxSize; } }
+            else { if (h > maxSize) { w = w * maxSize / h; h = maxSize; } }
+            canvas.width = w; canvas.height = h;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            var dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+            window._tempProductImage = dataUrl;
+            var preview = document.getElementById('pImagePreview');
+            if (preview) preview.innerHTML = '<img src="' + dataUrl + '" style="max-width:100%; max-height:120px; border-radius:8px; border:1px solid #ddd;">';
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function removeProductImage() {
+    window._tempProductImage = '';
+    var preview = document.getElementById('pImagePreview');
+    if (preview) preview.innerHTML = '<span style="color:#999; font-size:12px;">暂无图片</span>';
+}
+
+// 查看商品图片大图
+function viewProductImage(id) {
+    var product = products.find(function(p) { return String(p.id) === String(id); });
+    if (!product) return;
+    if (!product.image) {
+        showToast('该商品暂无图片，点「编」可上传', 'warning');
+        return;
+    }
+    var existing = document.getElementById('imageViewerOverlay');
+    if (existing) existing.remove();
+    var overlay = document.createElement('div');
+    overlay.id = 'imageViewerOverlay';
+    overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9999; display:flex; align-items:center; justify-content:center; flex-direction:column;';
+    overlay.innerHTML = '<img src="' + product.image + '" style="max-width:95%; max-height:80%; border-radius:8px;">' +
+        '<div style="color:#fff; margin-top:12px; font-size:15px; font-weight:600;">' + escapeHtml(product.name) + '</div>' +
+        '<div style="color:#aaa; margin-top:6px; font-size:13px;">点击任意处关闭</div>';
+    overlay.onclick = function() { overlay.remove(); };
+    document.body.appendChild(overlay);
 }
 
 function saveEditProduct(id) {
@@ -2187,7 +2258,9 @@ function saveEditProduct(id) {
     product.unit = document.getElementById('pUnit').value.trim();
     product.stock = parseInt(document.getElementById('pStock').value) || 0;
     product.minStock = parseInt(document.getElementById('pMinStock').value) || 5;
+    product.image = window._tempProductImage || '';
     product.updatedAt = new Date().toISOString();
+    window._tempProductImage = '';
 
     saveData();
     closeModal('modal-product');
@@ -2233,8 +2306,10 @@ function saveProduct() {
         unit: document.getElementById('pUnit').value.trim(),
         stock: parseInt(document.getElementById('pStock').value) || 0,
         minStock: parseInt(document.getElementById('pMinStock').value) || 5,
+        image: window._tempProductImage || '',
         createdAt: new Date().toISOString()
     };
+    window._tempProductImage = '';
 
     products.push(product);
     saveData();
